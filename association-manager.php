@@ -24,4 +24,4 @@ if (!file_exists($autoload)) {
 
 require_once $autoload;
 
-AssociationManager\Core\Plugin::init();
+AssociationManager\Core\Plugin::boot();

@@ -1,32 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace AssociationManager\Core;
 
-if (!defined('ABSPATH')) {
-    exit;
-}
+defined('ABSPATH') || exit;
 
 final class Plugin
 {
-    private static ?self $instance = null;
+    private static ?Kernel $kernel = null;
 
-    public static function init(): self
+    public static function boot(): Kernel
     {
-        if (self::$instance === null) {
-            self::$instance = new self();
-            self::$instance->boot();
+        if (self::$kernel === null) {
+            self::$kernel = new Kernel();
+            self::$kernel->boot();
         }
 
-        return self::$instance;
-    }
-
-    private function boot(): void
-    {
-        add_action('plugins_loaded', [$this, 'loaded']);
-    }
-
-    public function loaded(): void
-    {
-        do_action('association_manager_loaded');
+        return self::$kernel;
     }
 }
