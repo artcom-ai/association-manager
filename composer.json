@@ -1,0 +1,14 @@
+{
+  "name": "artcom-ai/association-manager",
+  "description": "A flexible association and member management plugin for WordPress.",
+  "type": "wordpress-plugin",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "AssociationManager\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.1"
+  }
+}
