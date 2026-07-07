@@ -70,6 +70,12 @@ final class MembersController
             'permission_callback' => [$this, 'checkPermission'],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/members/(?P<id>\d+)/renew-plan', [
+            'methods' => 'POST',
+            'callback' => [$this, 'renewByPlan'],
+            'permission_callback' => [$this, 'checkPermission'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/members/(?P<id>\d+)/fields', [
             'methods' => 'POST',
             'callback' => [$this, 'updateFields'],
@@ -190,6 +196,14 @@ final class MembersController
         return $this->transition($request, fn (int $id): Member => $this->service->renewMembership(
             $id,
             $expiresAt,
+            $this->currentUserId()
+        ));
+    }
+
+    public function renewByPlan(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        return $this->transition($request, fn (int $id): Member => $this->service->renewMembershipByPlan(
+            $id,
             $this->currentUserId()
         ));
     }

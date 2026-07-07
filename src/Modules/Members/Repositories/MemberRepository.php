@@ -9,6 +9,7 @@ use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
+use AssociationManager\Modules\Members\Domain\MemberStatus;
 
 defined('ABSPATH') || exit;
 
@@ -91,6 +92,27 @@ final class MemberRepository implements MemberRepositoryInterface
         $members = array_map(fn (array $row): Member => $this->hydrate($row), $rows ?: []);
 
         return new PaginatedResult($members, $total, $params->page, $params->perPage);
+    }
+
+    /**
+     * @return Member[]
+     */
+    public function findExpiredCandidates(string $now): array
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('members');
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE status = %s AND expires_at IS NOT NULL AND expires_at < %s",
+                MemberStatus::ACTIVE,
+                $now
+            ),
+            ARRAY_A
+        );
+
+        return array_map(fn (array $row): Member => $this->hydrate($row), $rows ?: []);
     }
 
     public function insert(Member $member): int

@@ -15,17 +15,24 @@ use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\EditMemberPage;
 use AssociationManager\Modules\Members\Admin\MembersPage;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
+use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepository;
 use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepositoryInterface;
+use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepository;
+use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepositoryInterface;
 use AssociationManager\Modules\Members\Rest\MembersController;
 use AssociationManager\Modules\Members\Services\MemberService;
+use AssociationManager\Modules\Members\Services\MembershipExpiryCalculator;
+use AssociationManager\Modules\Members\Services\MembershipExpiryRunner;
 
 defined('ABSPATH') || exit;
 
 final class MembersModule implements ModuleInterface
 {
+    private const EXPIRY_CRON_HOOK = 'association_manager_expire_memberships';
+
     public function name(): string
     {
         return 'members';
@@ -36,6 +43,8 @@ final class MembersModule implements ModuleInterface
         $container->set(MemberRepositoryInterface::class, new MemberRepository());
         $container->set(MemberStatusHistoryRepositoryInterface::class, new MemberStatusHistoryRepository());
         $container->set(MemberStatusRegistry::class, new MemberStatusRegistry());
+        $container->set(MembershipPlanRegistry::class, new MembershipPlanRegistry());
+        $container->set(MembershipRenewalRepositoryInterface::class, new MembershipRenewalRepository());
 
         $container->set(
             MemberService::class,
@@ -43,6 +52,22 @@ final class MembersModule implements ModuleInterface
                 $container->get(MemberRepositoryInterface::class),
                 $container->get(MemberStatusHistoryRepositoryInterface::class),
                 $container->get(MemberStatusRegistry::class),
+                $container->get(MembershipPlanRegistry::class),
+                $container->get(MembershipRenewalRepositoryInterface::class),
+            )
+        );
+
+        $container->set(
+            MembershipExpiryCalculator::class,
+            new MembershipExpiryCalculator($container->get(MembershipPlanRegistry::class))
+        );
+
+        $container->set(
+            MembershipExpiryRunner::class,
+            new MembershipExpiryRunner(
+                $container->get(MemberRepositoryInterface::class),
+                $container->get(MemberService::class),
+                $container->get(MembershipExpiryCalculator::class),
             )
         );
     }
@@ -52,6 +77,7 @@ final class MembersModule implements ModuleInterface
         $service = $container->get(MemberService::class);
         $fieldRegistry = $container->get(FieldRegistry::class);
         $fieldValueService = $container->get(FieldValueService::class);
+        $expiryRunner = $container->get(MembershipExpiryRunner::class);
 
         $adminMenu = $container->get(AdminMenu::class);
         $adminMenu->register(new MembersPage($service));
@@ -69,6 +95,20 @@ final class MembersModule implements ModuleInterface
                 $this->handleSaveMemberFields($fieldValueService, $fieldRegistry);
             }
         );
+
+        add_action(self::EXPIRY_CRON_HOOK, static function () use ($expiryRunner): void {
+            $expiryRunner->run();
+        });
+
+        // Activation schedules this once, but an already-active install
+        // picking up this code update would never get it scheduled
+        // without deactivate/reactivate - so also check defensively on
+        // every admin_init, same reasoning as the migration-timing fix.
+        add_action('admin_init', static function (): void {
+            if (!wp_next_scheduled(self::EXPIRY_CRON_HOOK)) {
+                wp_schedule_event(time(), 'daily', self::EXPIRY_CRON_HOOK);
+            }
+        });
 
         add_action('rest_api_init', function () use ($service, $fieldValueService): void {
             (new MembersController($service, $fieldValueService))->registerRoutes();
