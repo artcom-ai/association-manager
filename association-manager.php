@@ -27,4 +27,4 @@ require_once $autoload;
 register_activation_hook(AM_PLUGIN_FILE, [AssociationManager\Core\Activator::class, 'activate']);
 register_deactivation_hook(AM_PLUGIN_FILE, [AssociationManager\Core\Deactivator::class, 'deactivate']);
 
-AssociationManager\Core\Plugin::boot();cd
+AssociationManager\Core\Plugin::boot();
