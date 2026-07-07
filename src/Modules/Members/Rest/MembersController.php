@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Members\Rest;
 
+use AssociationManager\Core\Fields\FieldValidationException;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Services\MemberService;
@@ -18,7 +20,8 @@ final class MembersController
     private const NAMESPACE = 'association-manager/v1';
 
     public function __construct(
-        private readonly MemberService $service
+        private readonly MemberService $service,
+        private readonly FieldValueService $fieldValueService,
     ) {
     }
 
@@ -66,6 +69,12 @@ final class MembersController
             'callback' => [$this, 'renew'],
             'permission_callback' => [$this, 'checkPermission'],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/members/(?P<id>\d+)/fields', [
+            'methods' => 'POST',
+            'callback' => [$this, 'updateFields'],
+            'permission_callback' => [$this, 'checkPermission'],
+        ]);
     }
 
     public function checkPermission(): bool
@@ -96,17 +105,61 @@ final class MembersController
         return new WP_REST_Response($this->toArray($member), 200);
     }
 
-    public function create(WP_REST_Request $request): WP_REST_Response
+    public function create(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
         $wpUserId = $request->get_param('wp_user_id');
         $membershipType = $request->get_param('membership_type');
+        $customFields = $request->get_param('custom_fields');
+        $customFields = is_array($customFields) ? $customFields : [];
+
+        $errors = $this->fieldValueService->validate('member', $customFields);
+
+        if ($errors !== []) {
+            return $this->fieldValidationError($errors);
+        }
 
         $member = $this->service->createMember(
             $wpUserId !== null ? (int) $wpUserId : null,
             $membershipType !== null ? sanitize_text_field((string) $membershipType) : null
         );
 
+        if ($customFields !== []) {
+            $this->fieldValueService->save('member', $member->id, $customFields);
+        }
+
         return new WP_REST_Response($this->toArray($member), 201);
+    }
+
+    public function updateFields(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        $memberId = (int) $request->get_param('id');
+        $member = $this->service->find($memberId);
+
+        if ($member === null) {
+            return new WP_Error('am_member_not_found', 'Member not found.', ['status' => 404]);
+        }
+
+        $customFields = $request->get_param('custom_fields');
+        $customFields = is_array($customFields) ? $customFields : [];
+
+        try {
+            $this->fieldValueService->save('member', $memberId, $customFields);
+        } catch (FieldValidationException $e) {
+            return $this->fieldValidationError($e->errors());
+        }
+
+        return new WP_REST_Response($this->toArray($this->service->find($memberId)), 200);
+    }
+
+    /**
+     * @param array<string, string[]> $errors
+     */
+    private function fieldValidationError(array $errors): WP_Error
+    {
+        return new WP_Error('am_member_invalid_fields', 'Field validation failed.', [
+            'status' => 422,
+            'errors' => $errors,
+        ]);
     }
 
     public function activate(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -176,6 +229,7 @@ final class MembersController
             'joined_at' => $member->joinedAt,
             'expires_at' => $member->expiresAt,
             'approved_at' => $member->approvedAt,
+            'custom_fields' => $this->fieldValueService->valuesFor('member', $member->id),
         ];
     }
 }

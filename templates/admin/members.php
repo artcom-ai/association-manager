@@ -16,12 +16,13 @@ defined('ABSPATH') || exit;
                 <th><?php esc_html_e('Status', 'association-manager'); ?></th>
                 <th><?php esc_html_e('Membership type', 'association-manager'); ?></th>
                 <th><?php esc_html_e('Expires', 'association-manager'); ?></th>
+                <th><?php esc_html_e('Actions', 'association-manager'); ?></th>
             </tr>
         </thead>
         <tbody>
         <?php if (empty($members)): ?>
             <tr>
-                <td colspan="5"><?php esc_html_e('No members yet.', 'association-manager'); ?></td>
+                <td colspan="6"><?php esc_html_e('No members yet.', 'association-manager'); ?></td>
             </tr>
         <?php else: ?>
             <?php foreach ($members as $member): ?>
@@ -31,6 +32,11 @@ defined('ABSPATH') || exit;
                     <td><?php echo esc_html($member->status); ?></td>
                     <td><?php echo esc_html($member->membershipType ?? '—'); ?></td>
                     <td><?php echo esc_html($member->expiresAt ?? '—'); ?></td>
+                    <td>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=association-manager-member-edit&id=' . $member->id)); ?>">
+                            <?php esc_html_e('Edit fields', 'association-manager'); ?>
+                        </a>
+                    </td>
                 </tr>
             <?php endforeach; ?>
         <?php endif; ?>
