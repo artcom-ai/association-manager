@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Core\Providers;
 
+use AssociationManager\Core\Admin\AdminMenu;
+use AssociationManager\Core\Admin\DashboardPage;
 use AssociationManager\Core\Container;
 use AssociationManager\Core\ModuleManager;
 use AssociationManager\Core\ServiceProviderInterface;
@@ -18,10 +20,17 @@ final class CoreServiceProvider implements ServiceProviderInterface
             ModuleManager::class,
             new ModuleManager()
         );
+
+        $container->set(
+            AdminMenu::class,
+            new AdminMenu()
+        );
     }
 
     public function boot(Container $container): void
     {
-        // Core services boot here.
+        $adminMenu = $container->get(AdminMenu::class);
+        $adminMenu->register(new DashboardPage());
+        $adminMenu->boot();
     }
 }
