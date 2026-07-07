@@ -100,6 +100,20 @@ final class FieldRenderer
                 <?php
                 break;
 
+            case FieldDefinition::TYPE_LOCATION:
+                ?>
+                <input
+                    type="text"
+                    id="<?php echo esc_attr($id); ?>"
+                    name="<?php echo esc_attr($name); ?>"
+                    value="<?php echo esc_attr($value ?? ''); ?>"
+                    placeholder="37.9838,23.7275"
+                    class="regular-text"
+                />
+                <p class="description"><?php esc_html_e('Format: latitude,longitude', 'association-manager'); ?></p>
+                <?php
+                break;
+
             default:
                 ?>
                 <input

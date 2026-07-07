@@ -35,6 +35,7 @@ final class FieldValidator
             FieldDefinition::TYPE_SELECT => $this->validateSelect($field, $value),
             FieldDefinition::TYPE_CHECKBOX => $this->validateCheckbox($field, $value),
             FieldDefinition::TYPE_FILE => $this->validateFile($field, $value),
+            FieldDefinition::TYPE_LOCATION => $this->validateLocation($field, (string) $value),
             default => [],
         };
     }
@@ -119,5 +120,24 @@ final class FieldValidator
         return (is_numeric($value) && (int) $value > 0)
             ? []
             : ["{$field->label} must be a valid uploaded file."];
+    }
+
+    /**
+     * @return string[]
+     */
+    private function validateLocation(FieldDefinition $field, string $value): array
+    {
+        if (!preg_match('/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/', $value, $matches)) {
+            return ["{$field->label} must be in \"latitude,longitude\" format."];
+        }
+
+        $lat = (float) $matches[1];
+        $lng = (float) $matches[2];
+
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return ["{$field->label} coordinates are out of range."];
+        }
+
+        return [];
     }
 }
