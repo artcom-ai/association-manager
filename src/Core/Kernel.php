@@ -7,6 +7,7 @@ namespace AssociationManager\Core;
 use AssociationManager\Core\Providers\CoreServiceProvider;
 use AssociationManager\Database\Migrator;
 use AssociationManager\Modules\Directory\DirectoryModule;
+use AssociationManager\Modules\Events\EventsModule;
 use AssociationManager\Modules\Members\MembersModule;
 use AssociationManager\Modules\Payments\PaymentsModule;
 
@@ -60,6 +61,7 @@ final class Kernel
             new MembersModule(),
             new DirectoryModule(),
             new PaymentsModule(),
+            new EventsModule(),
         ];
 
         foreach ($modules as $module) {
