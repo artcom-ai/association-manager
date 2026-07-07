@@ -29,6 +29,20 @@ final class MemberRepository implements MemberRepositoryInterface
         return $row ? $this->hydrate($row) : null;
     }
 
+    public function findByMemberNumber(string $memberNumber): ?Member
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('members');
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM {$table} WHERE member_number = %s", $memberNumber),
+            ARRAY_A
+        );
+
+        return $row ? $this->hydrate($row) : null;
+    }
+
     /**
      * @return Member[]
      */

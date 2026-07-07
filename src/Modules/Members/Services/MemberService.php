@@ -43,22 +43,149 @@ final class MemberService
 
     public function activateMember(int $memberId, ?int $changedBy = null): Member
     {
-        return $this->changeStatus($memberId, MemberStatus::ACTIVE, $changedBy);
+        return $this->transitionStatus($memberId, MemberStatus::ACTIVE, $changedBy);
     }
 
     public function suspendMember(int $memberId, ?int $changedBy = null, ?string $reason = null): Member
     {
-        return $this->changeStatus($memberId, MemberStatus::SUSPENDED, $changedBy, $reason);
+        return $this->transitionStatus($memberId, MemberStatus::SUSPENDED, $changedBy, $reason);
     }
 
     public function archiveMember(int $memberId, ?int $changedBy = null): Member
     {
-        return $this->changeStatus($memberId, MemberStatus::INACTIVE, $changedBy);
+        return $this->transitionStatus($memberId, MemberStatus::INACTIVE, $changedBy);
     }
 
     public function expireMember(int $memberId, ?int $changedBy = null): Member
     {
-        return $this->changeStatus($memberId, MemberStatus::EXPIRED, $changedBy);
+        return $this->transitionStatus($memberId, MemberStatus::EXPIRED, $changedBy);
+    }
+
+    /**
+     * Generic entry point for transitioning to any status registered in
+     * MemberStatusRegistry (validated the same way as the named
+     * convenience methods above) - used by Quick Edit, where the status
+     * comes from a dropdown of all registered statuses rather than one
+     * of the four fixed actions.
+     */
+    public function transitionStatus(
+        int $memberId,
+        string $newStatus,
+        ?int $changedBy = null,
+        ?string $reason = null
+    ): Member {
+        $member = $this->mustFind($memberId);
+
+        if (!$this->statuses->isTransitionAllowed($member->status, $newStatus)) {
+            throw new \LogicException(
+                "Cannot transition member from \"{$member->status}\" to \"{$newStatus}\"."
+            );
+        }
+
+        $approvedAt = ($newStatus === MemberStatus::ACTIVE && $member->approvedAt === null)
+            ? current_time('mysql')
+            : null;
+
+        $updated = $member->withStatus($newStatus, $approvedAt);
+
+        $this->repository->update($updated);
+
+        $this->history->record($memberId, $member->status, $newStatus, $changedBy, $reason);
+
+        do_action('association_manager_member_status_changed', $updated, $member->status, $newStatus);
+
+        return $updated;
+    }
+
+    /**
+     * Plain field correction, not a lifecycle event: no transition
+     * check, no history entry, no action hook.
+     */
+    public function updateMembershipType(int $memberId, ?string $membershipType): Member
+    {
+        $member = $this->mustFind($memberId);
+
+        $updated = new Member(
+            id: $member->id,
+            uuid: $member->uuid,
+            wpUserId: $member->wpUserId,
+            memberNumber: $member->memberNumber,
+            status: $member->status,
+            membershipType: $membershipType,
+            joinedAt: $member->joinedAt,
+            expiresAt: $member->expiresAt,
+            approvedAt: $member->approvedAt,
+        );
+
+        $this->repository->update($updated);
+
+        return $updated;
+    }
+
+    /**
+     * CSV import row: create-or-update matched by member_number.
+     * Deliberately bypasses the transition-graph check (a bulk data
+     * load represents ground truth, not a business-rule-governed
+     * transition) but still rejects a status string that isn't
+     * registered at all. Records a history entry (reason: "import")
+     * only when an existing member's status actually changes.
+     *
+     * @return array{action: 'created'|'updated', member: Member}
+     */
+    public function importRow(
+        string $memberNumber,
+        ?string $status,
+        ?string $membershipType,
+        ?string $joinedAt,
+        ?string $expiresAt,
+        ?int $importedBy = null
+    ): array {
+        if ($status !== null && $this->statuses->get($status) === null) {
+            throw new \InvalidArgumentException("Unknown status \"{$status}\".");
+        }
+
+        $existing = $this->repository->findByMemberNumber($memberNumber);
+
+        if ($existing === null) {
+            $draft = new Member(
+                id: null,
+                uuid: null,
+                wpUserId: null,
+                memberNumber: $memberNumber,
+                status: $status ?? MemberStatus::CANDIDATE,
+                membershipType: $membershipType,
+                joinedAt: $joinedAt,
+                expiresAt: $expiresAt,
+                approvedAt: null,
+            );
+
+            $id = $this->repository->insert($draft);
+            $created = $this->mustFind($id);
+
+            $this->history->record($id, null, $created->status, $importedBy, 'import');
+
+            return ['action' => 'created', 'member' => $created];
+        }
+
+        $updated = new Member(
+            id: $existing->id,
+            uuid: $existing->uuid,
+            wpUserId: $existing->wpUserId,
+            memberNumber: $memberNumber,
+            status: $status ?? $existing->status,
+            membershipType: $membershipType ?? $existing->membershipType,
+            joinedAt: $joinedAt ?? $existing->joinedAt,
+            expiresAt: $expiresAt ?? $existing->expiresAt,
+            approvedAt: $existing->approvedAt,
+        );
+
+        $this->repository->update($updated);
+
+        if ($status !== null && $status !== $existing->status) {
+            $this->history->record($existing->id, $existing->status, $status, $importedBy, 'import');
+        }
+
+        return ['action' => 'updated', 'member' => $updated];
     }
 
     /**
@@ -161,35 +288,6 @@ final class MemberService
         do_action('association_manager_member_renewed', $renewed, $newExpiresAt);
 
         return $renewed;
-    }
-
-    private function changeStatus(
-        int $memberId,
-        string $newStatus,
-        ?int $changedBy = null,
-        ?string $reason = null
-    ): Member {
-        $member = $this->mustFind($memberId);
-
-        if (!$this->statuses->isTransitionAllowed($member->status, $newStatus)) {
-            throw new \LogicException(
-                "Cannot transition member from \"{$member->status}\" to \"{$newStatus}\"."
-            );
-        }
-
-        $approvedAt = ($newStatus === MemberStatus::ACTIVE && $member->approvedAt === null)
-            ? current_time('mysql')
-            : null;
-
-        $updated = $member->withStatus($newStatus, $approvedAt);
-
-        $this->repository->update($updated);
-
-        $this->history->record($memberId, $member->status, $newStatus, $changedBy, $reason);
-
-        do_action('association_manager_member_status_changed', $updated, $member->status, $newStatus);
-
-        return $updated;
     }
 
     private function mustFind(int $id): Member

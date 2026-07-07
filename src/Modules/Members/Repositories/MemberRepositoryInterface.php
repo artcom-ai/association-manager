@@ -15,6 +15,8 @@ interface MemberRepositoryInterface
 {
     public function find(int $id): ?Member;
 
+    public function findByMemberNumber(string $memberNumber): ?Member;
+
     /**
      * @return Member[]
      */

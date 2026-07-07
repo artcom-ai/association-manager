@@ -13,6 +13,7 @@ use AssociationManager\Core\Fields\FieldValidationException;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\EditMemberPage;
+use AssociationManager\Modules\Members\Admin\MemberBulkActions;
 use AssociationManager\Modules\Members\Admin\MembersPage;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
 use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
@@ -23,6 +24,7 @@ use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepositor
 use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepository;
 use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepositoryInterface;
 use AssociationManager\Modules\Members\Rest\MembersController;
+use AssociationManager\Modules\Members\Services\MemberCsvExporter;
 use AssociationManager\Modules\Members\Services\MemberService;
 use AssociationManager\Modules\Members\Services\MembershipExpiryCalculator;
 use AssociationManager\Modules\Members\Services\MembershipExpiryRunner;
@@ -79,8 +81,12 @@ final class MembersModule implements ModuleInterface
         $fieldValueService = $container->get(FieldValueService::class);
         $expiryRunner = $container->get(MembershipExpiryRunner::class);
 
+        $statusRegistry = $container->get(MemberStatusRegistry::class);
+        $planRegistry = $container->get(MembershipPlanRegistry::class);
+        $exporter = new MemberCsvExporter($service, $fieldRegistry, $fieldValueService);
+
         $adminMenu = $container->get(AdminMenu::class);
-        $adminMenu->register(new MembersPage($service));
+        $adminMenu->register(new MembersPage($service, $statusRegistry, $planRegistry));
         $adminMenu->register(new EditMemberPage($service, $fieldRegistry, $fieldValueService));
 
         // EditMemberPage is registered (for routing/capability checks) but
@@ -112,6 +118,37 @@ final class MembersModule implements ModuleInterface
 
         add_action('rest_api_init', function () use ($service, $fieldValueService): void {
             (new MembersController($service, $fieldValueService))->registerRoutes();
+        });
+
+        add_action('admin_post_association_manager_export_members', function () use ($exporter): void {
+            $this->handleExportMembers($exporter);
+        });
+
+        add_action('admin_post_association_manager_import_members', function () use ($service): void {
+            $this->handleImportMembers($service);
+        });
+
+        add_action('wp_ajax_association_manager_quick_edit_member', function () use ($service): void {
+            $this->handleQuickEditMember($service);
+        });
+
+        add_action('admin_enqueue_scripts', static function (string $hookSuffix): void {
+            if (($_GET['page'] ?? '') !== MembersPage::SLUG) {
+                return;
+            }
+
+            wp_enqueue_script(
+                'association-manager-members-quick-edit',
+                AM_PLUGIN_URL . 'assets/js/members-quick-edit.js',
+                [],
+                AM_PLUGIN_VERSION,
+                true
+            );
+
+            wp_localize_script('association-manager-members-quick-edit', 'associationManagerQuickEdit', [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('association_manager_quick_edit_member'),
+            ]);
         });
     }
 
@@ -147,5 +184,138 @@ final class MembersModule implements ModuleInterface
 
         wp_safe_redirect(add_query_arg($redirectArgs, admin_url('admin.php')));
         exit;
+    }
+
+    private function handleExportMembers(MemberCsvExporter $exporter): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to do this.', 'association-manager'));
+        }
+
+        check_admin_referer('association_manager_export_members');
+
+        nocache_headers();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=members-' . gmdate('Y-m-d') . '.csv');
+
+        $out = fopen('php://output', 'w');
+        fputcsv($out, $exporter->headers());
+
+        foreach ($exporter->rows() as $row) {
+            fputcsv($out, $row);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+    private function handleImportMembers(MemberService $service): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to do this.', 'association-manager'));
+        }
+
+        check_admin_referer('association_manager_import_members');
+
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        $tmpName = $_FILES['import_file']['tmp_name'] ?? null;
+        $handle = $tmpName !== null ? fopen($tmpName, 'r') : false;
+
+        if ($handle !== false) {
+            $header = fgetcsv($handle);
+            $rowNumber = 1;
+
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNumber++;
+
+                if ($header === false) {
+                    continue;
+                }
+
+                $data = array_combine($header, array_pad($row, count($header), null));
+                $memberNumber = trim((string) ($data['member_number'] ?? ''));
+
+                if ($memberNumber === '') {
+                    $errors[] = "Row {$rowNumber}: member_number is required.";
+                    continue;
+                }
+
+                try {
+                    $result = $service->importRow(
+                        $memberNumber,
+                        ($data['status'] ?? '') !== '' ? sanitize_text_field((string) $data['status']) : null,
+                        ($data['membership_type'] ?? '') !== '' ? sanitize_text_field((string) $data['membership_type']) : null,
+                        ($data['joined_at'] ?? '') !== '' ? (string) $data['joined_at'] : null,
+                        ($data['expires_at'] ?? '') !== '' ? (string) $data['expires_at'] : null,
+                        get_current_user_id() ?: null
+                    );
+
+                    if ($result['action'] === 'created') {
+                        $created++;
+                    } else {
+                        $updated++;
+                    }
+                } catch (\Throwable $e) {
+                    $errors[] = "Row {$rowNumber}: {$e->getMessage()}";
+                }
+            }
+
+            fclose($handle);
+        } else {
+            $errors[] = 'Could not read the uploaded file.';
+        }
+
+        $userId = get_current_user_id();
+        set_transient(
+            'association_manager_import_result_' . $userId,
+            ['created' => $created, 'updated' => $updated, 'errors' => $errors],
+            60
+        );
+
+        wp_safe_redirect(admin_url('admin.php?page=' . MembersPage::SLUG));
+        exit;
+    }
+
+    private function handleQuickEditMember(MemberService $service): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'association-manager')], 403);
+        }
+
+        check_ajax_referer('association_manager_quick_edit_member');
+
+        $memberId = isset($_POST['member_id']) ? (int) $_POST['member_id'] : 0;
+        $status = isset($_POST['status']) ? sanitize_text_field((string) $_POST['status']) : null;
+        $membershipType = isset($_POST['membership_type']) ? sanitize_text_field((string) $_POST['membership_type']) : null;
+
+        $member = $service->find($memberId);
+
+        if ($member === null) {
+            wp_send_json_error(['message' => __('Member not found.', 'association-manager')], 404);
+        }
+
+        $userId = get_current_user_id();
+        $changedBy = $userId > 0 ? $userId : null;
+
+        try {
+            if ($status !== null && $status !== $member->status) {
+                $member = $service->transitionStatus($memberId, $status, $changedBy);
+            }
+
+            if ($membershipType !== $member->membershipType) {
+                $member = $service->updateMembershipType($memberId, $membershipType !== '' ? $membershipType : null);
+            }
+        } catch (\LogicException $e) {
+            wp_send_json_error(['message' => $e->getMessage()], 409);
+        }
+
+        wp_send_json_success([
+            'id' => $member->id,
+            'status' => $member->status,
+            'membership_type' => $member->membershipType,
+        ]);
     }
 }
