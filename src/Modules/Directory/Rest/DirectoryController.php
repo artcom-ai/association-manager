@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Directory\Rest;
 
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Directory\Services\DirectoryService;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -30,6 +31,8 @@ final class DirectoryController
 
     public function index(WP_REST_Request $request): WP_REST_Response
     {
-        return new WP_REST_Response($this->service->listPublicEntries(), 200);
+        $params = PaginationParams::fromQuery($request->get_param('page'), $request->get_param('per_page'));
+
+        return new WP_REST_Response($this->service->paginate($params)->toResponseArray(), 200);
     }
 }

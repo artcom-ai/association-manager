@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Events\Services;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Events\Domain\Event;
 use AssociationManager\Modules\Events\Repositories\EventRepositoryInterface;
 
@@ -68,6 +70,22 @@ final class EventService
     public function upcomingPublished(): array
     {
         return $this->repository->upcomingPublished();
+    }
+
+    /**
+     * @return PaginatedResult<Event>
+     */
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        return $this->repository->paginate($params);
+    }
+
+    /**
+     * @return PaginatedResult<Event>
+     */
+    public function paginateUpcomingPublished(PaginationParams $params): PaginatedResult
+    {
+        return $this->repository->paginateUpcomingPublished($params);
     }
 
     private function mustFind(int $id): Event

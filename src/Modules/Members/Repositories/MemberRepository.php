@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Members\Repositories;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Members\Domain\Member;
 
@@ -37,6 +39,53 @@ final class MemberRepository implements MemberRepositoryInterface
         $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A);
 
         return array_map(fn (array $row): Member => $this->hydrate($row), $rows ?: []);
+    }
+
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('members');
+
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d",
+                $params->limit(),
+                $params->offset()
+            ),
+            ARRAY_A
+        );
+
+        $members = array_map(fn (array $row): Member => $this->hydrate($row), $rows ?: []);
+
+        return new PaginatedResult($members, $total, $params->page, $params->perPage);
+    }
+
+    public function paginateByStatus(string $status, PaginationParams $params): PaginatedResult
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('members');
+
+        $total = (int) $wpdb->get_var(
+            $wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", $status)
+        );
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE status = %s ORDER BY id DESC LIMIT %d OFFSET %d",
+                $status,
+                $params->limit(),
+                $params->offset()
+            ),
+            ARRAY_A
+        );
+
+        $members = array_map(fn (array $row): Member => $this->hydrate($row), $rows ?: []);
+
+        return new PaginatedResult($members, $total, $params->page, $params->perPage);
     }
 
     public function insert(Member $member): int

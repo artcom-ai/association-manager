@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Members\Services;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
@@ -52,6 +54,22 @@ final class MemberService
     public function all(): array
     {
         return $this->repository->all();
+    }
+
+    /**
+     * @return PaginatedResult<Member>
+     */
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        return $this->repository->paginate($params);
+    }
+
+    /**
+     * @return PaginatedResult<Member>
+     */
+    public function paginateByStatus(string $status, PaginationParams $params): PaginatedResult
+    {
+        return $this->repository->paginateByStatus($status, $params);
     }
 
     private function mustFind(int $id): Member

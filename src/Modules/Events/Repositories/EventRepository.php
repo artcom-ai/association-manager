@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Events\Repositories;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Events\Domain\Event;
 use AssociationManager\Modules\Events\Domain\EventStatus;
@@ -59,6 +61,59 @@ final class EventRepository implements EventRepositoryInterface
         );
 
         return array_map(fn (array $row): Event => $this->hydrate($row), $rows ?: []);
+    }
+
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('events');
+
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} ORDER BY starts_at ASC LIMIT %d OFFSET %d",
+                $params->limit(),
+                $params->offset()
+            ),
+            ARRAY_A
+        );
+
+        $events = array_map(fn (array $row): Event => $this->hydrate($row), $rows ?: []);
+
+        return new PaginatedResult($events, $total, $params->page, $params->perPage);
+    }
+
+    public function paginateUpcomingPublished(PaginationParams $params): PaginatedResult
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('events');
+        $now = current_time('mysql');
+
+        $total = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE status = %s AND starts_at >= %s",
+                EventStatus::PUBLISHED,
+                $now
+            )
+        );
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE status = %s AND starts_at >= %s ORDER BY starts_at ASC LIMIT %d OFFSET %d",
+                EventStatus::PUBLISHED,
+                $now,
+                $params->limit(),
+                $params->offset()
+            ),
+            ARRAY_A
+        );
+
+        $events = array_map(fn (array $row): Event => $this->hydrate($row), $rows ?: []);
+
+        return new PaginatedResult($events, $total, $params->page, $params->perPage);
     }
 
     public function insert(Event $event): int

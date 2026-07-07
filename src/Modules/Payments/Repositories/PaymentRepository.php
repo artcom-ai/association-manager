@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Payments\Repositories;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Payments\Domain\Payment;
 
@@ -37,6 +39,28 @@ final class PaymentRepository implements PaymentRepositoryInterface
         $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A);
 
         return array_map(fn (array $row): Payment => $this->hydrate($row), $rows ?: []);
+    }
+
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        global $wpdb;
+
+        $table = DatabaseManager::table('payments');
+
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d",
+                $params->limit(),
+                $params->offset()
+            ),
+            ARRAY_A
+        );
+
+        $payments = array_map(fn (array $row): Payment => $this->hydrate($row), $rows ?: []);
+
+        return new PaginatedResult($payments, $total, $params->page, $params->perPage);
     }
 
     /**

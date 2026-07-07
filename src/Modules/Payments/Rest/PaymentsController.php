@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Payments\Rest;
 
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Payments\Domain\Payment;
 use AssociationManager\Modules\Payments\Services\PaymentService;
 use WP_Error;
@@ -68,9 +69,14 @@ final class PaymentsController
 
     public function index(WP_REST_Request $request): WP_REST_Response
     {
-        $payments = array_map([$this, 'toArray'], $this->service->all());
+        $params = PaginationParams::fromQuery($request->get_param('page'), $request->get_param('per_page'));
 
-        return new WP_REST_Response($payments, 200);
+        $result = $this->service->paginate($params);
+
+        $response = $result->toResponseArray();
+        $response['data'] = array_map([$this, 'toArray'], $response['data']);
+
+        return new WP_REST_Response($response, 200);
     }
 
     public function show(WP_REST_Request $request): WP_REST_Response|WP_Error

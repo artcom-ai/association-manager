@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Payments\Services;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Payments\Domain\Payment;
 use AssociationManager\Modules\Payments\Repositories\PaymentRepositoryInterface;
 
@@ -68,6 +70,14 @@ final class PaymentService
     public function all(): array
     {
         return $this->repository->all();
+    }
+
+    /**
+     * @return PaginatedResult<Payment>
+     */
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        return $this->repository->paginate($params);
     }
 
     /**

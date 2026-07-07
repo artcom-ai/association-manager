@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Directory\Services;
 
+use AssociationManager\Core\Pagination\PaginatedResult;
+use AssociationManager\Core\Pagination\PaginationParams;
+use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
@@ -39,5 +42,26 @@ final class DirectoryService
         }
 
         return $entries;
+    }
+
+    /**
+     * Paginated, public-safe directory entries (active members only).
+     *
+     * @return PaginatedResult<array{member_number: ?string, membership_type: ?string, joined_at: ?string}>
+     */
+    public function paginate(PaginationParams $params): PaginatedResult
+    {
+        $result = $this->members->paginateByStatus(MemberStatus::ACTIVE, $params);
+
+        $entries = array_map(
+            fn (Member $member): array => [
+                'member_number' => $member->memberNumber,
+                'membership_type' => $member->membershipType,
+                'joined_at' => $member->joinedAt,
+            ],
+            $result->items
+        );
+
+        return new PaginatedResult($entries, $result->total, $result->page, $result->perPage);
     }
 }

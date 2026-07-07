@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Events\Rest;
 
+use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Events\Domain\Event;
 use AssociationManager\Modules\Events\Services\EventService;
 use WP_Error;
@@ -68,12 +69,24 @@ final class EventsController
 
     public function index(WP_REST_Request $request): WP_REST_Response
     {
-        return new WP_REST_Response(array_map([$this, 'toArray'], $this->service->all()), 200);
+        $params = PaginationParams::fromQuery($request->get_param('page'), $request->get_param('per_page'));
+
+        $result = $this->service->paginate($params);
+
+        $response = $result->toResponseArray();
+        $response['data'] = array_map([$this, 'toArray'], $response['data']);
+
+        return new WP_REST_Response($response, 200);
     }
 
     public function upcoming(WP_REST_Request $request): WP_REST_Response
     {
-        $events = array_map(
+        $params = PaginationParams::fromQuery($request->get_param('page'), $request->get_param('per_page'));
+
+        $result = $this->service->paginateUpcomingPublished($params);
+
+        $response = $result->toResponseArray();
+        $response['data'] = array_map(
             fn (Event $event): array => [
                 'title' => $event->title,
                 'description' => $event->description,
@@ -81,10 +94,10 @@ final class EventsController
                 'starts_at' => $event->startsAt,
                 'ends_at' => $event->endsAt,
             ],
-            $this->service->upcomingPublished()
+            $response['data']
         );
 
-        return new WP_REST_Response($events, 200);
+        return new WP_REST_Response($response, 200);
     }
 
     public function show(WP_REST_Request $request): WP_REST_Response|WP_Error
