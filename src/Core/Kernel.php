@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace AssociationManager\Core;
 
 use AssociationManager\Core\Providers\CoreServiceProvider;
+use AssociationManager\Database\Migrator;
 use AssociationManager\Modules\Directory\DirectoryModule;
 use AssociationManager\Modules\Members\MembersModule;
+use AssociationManager\Modules\Payments\PaymentsModule;
 
 defined('ABSPATH') || exit;
 
@@ -57,6 +59,7 @@ final class Kernel
             // Members must register() first (see ADR-004).
             new MembersModule(),
             new DirectoryModule(),
+            new PaymentsModule(),
         ];
 
         foreach ($modules as $module) {
@@ -81,6 +84,11 @@ final class Kernel
         add_action('init', function (): void {
             do_action('association_manager_loaded');
         });
+
+        // Activation only runs Migrator::installPending() once at
+        // activation time; this catches pending migrations shipped in a
+        // code-only update to an already-active install (see ADR-005).
+        add_action('admin_init', [Migrator::class, 'installPending']);
     }
 
     public function container(): Container
