@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AssociationManager\Core;
 
 use AssociationManager\Core\Providers\CoreServiceProvider;
+use AssociationManager\Modules\Members\MembersModule;
 
 defined('ABSPATH') || exit;
 
@@ -26,7 +27,9 @@ final class Kernel
     {
         $this->registerProviders();
         $this->registerServices();
+        $this->registerModules();
         $this->bootProviders();
+        $this->bootModules();
         $this->registerHooks();
     }
 
@@ -44,11 +47,29 @@ final class Kernel
         }
     }
 
+    private function registerModules(): void
+    {
+        $moduleManager = $this->container->get(ModuleManager::class);
+
+        $modules = [
+            new MembersModule(),
+        ];
+
+        foreach ($modules as $module) {
+            $moduleManager->register($module);
+        }
+    }
+
     private function bootProviders(): void
     {
         foreach ($this->providers as $provider) {
             $provider->boot($this->container);
         }
+    }
+
+    private function bootModules(): void
+    {
+        $this->container->get(ModuleManager::class)->boot($this->container);
     }
 
     private function registerHooks(): void
