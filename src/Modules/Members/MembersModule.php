@@ -8,8 +8,11 @@ use AssociationManager\Core\Admin\AdminMenu;
 use AssociationManager\Core\Container;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\MembersPage;
+use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
+use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepository;
+use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepositoryInterface;
 use AssociationManager\Modules\Members\Rest\MembersController;
 use AssociationManager\Modules\Members\Services\MemberService;
 
@@ -25,10 +28,16 @@ final class MembersModule implements ModuleInterface
     public function register(Container $container): void
     {
         $container->set(MemberRepositoryInterface::class, new MemberRepository());
+        $container->set(MemberStatusHistoryRepositoryInterface::class, new MemberStatusHistoryRepository());
+        $container->set(MemberStatusRegistry::class, new MemberStatusRegistry());
 
         $container->set(
             MemberService::class,
-            new MemberService($container->get(MemberRepositoryInterface::class))
+            new MemberService(
+                $container->get(MemberRepositoryInterface::class),
+                $container->get(MemberStatusHistoryRepositoryInterface::class),
+                $container->get(MemberStatusRegistry::class),
+            )
         );
     }
 

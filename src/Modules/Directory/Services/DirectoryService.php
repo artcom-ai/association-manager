@@ -7,6 +7,7 @@ namespace AssociationManager\Modules\Directory\Services;
 use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
@@ -51,7 +52,7 @@ final class DirectoryService
      */
     public function paginate(PaginationParams $params): PaginatedResult
     {
-        $result = $this->members->paginateByStatus(MemberStatus::ACTIVE, $params);
+        $result = $this->members->search(new MemberSearchCriteria(status: MemberStatus::ACTIVE), $params);
 
         $entries = array_map(
             fn (Member $member): array => [

@@ -8,6 +8,7 @@ use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 
 defined('ABSPATH') || exit;
 
@@ -63,22 +64,26 @@ final class MemberRepository implements MemberRepositoryInterface
         return new PaginatedResult($members, $total, $params->page, $params->perPage);
     }
 
-    public function paginateByStatus(string $status, PaginationParams $params): PaginatedResult
+    public function search(MemberSearchCriteria $criteria, PaginationParams $params): PaginatedResult
     {
         global $wpdb;
 
         $table = DatabaseManager::table('members');
 
-        $total = (int) $wpdb->get_var(
-            $wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", $status)
+        [$where, $args] = $this->buildWhere($criteria);
+
+        $total = (int) (
+            $args === []
+                ? $wpdb->get_var("SELECT COUNT(*) FROM {$table}{$where}")
+                : $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table}{$where}", ...$args))
         );
+
+        $selectArgs = [...$args, $params->limit(), $params->offset()];
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE status = %s ORDER BY id DESC LIMIT %d OFFSET %d",
-                $status,
-                $params->limit(),
-                $params->offset()
+                "SELECT * FROM {$table}{$where} ORDER BY id DESC LIMIT %d OFFSET %d",
+                ...$selectArgs
             ),
             ARRAY_A
         );
@@ -99,15 +104,17 @@ final class MemberRepository implements MemberRepositoryInterface
             $table,
             [
                 'wp_user_id' => $member->wpUserId,
+                'uuid' => wp_generate_uuid4(),
                 'member_number' => $member->memberNumber,
                 'status' => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at' => $member->joinedAt,
+                'expires_at' => $member->expiresAt,
                 'approved_at' => $member->approvedAt,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
-            ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+            ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
         );
 
         return (int) $wpdb->insert_id;
@@ -130,24 +137,57 @@ final class MemberRepository implements MemberRepositoryInterface
                 'status' => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at' => $member->joinedAt,
+                'expires_at' => $member->expiresAt,
                 'approved_at' => $member->approvedAt,
                 'updated_at' => current_time('mysql'),
             ],
             ['id' => $member->id],
-            ['%s', '%s', '%s', '%s', '%s', '%s'],
+            ['%s', '%s', '%s', '%s', '%s', '%s', '%s'],
             ['%d']
         );
+    }
+
+    /**
+     * @return array{0: string, 1: array<int, string>}
+     */
+    private function buildWhere(MemberSearchCriteria $criteria): array
+    {
+        global $wpdb;
+
+        $clauses = [];
+        $args = [];
+
+        if ($criteria->status !== null) {
+            $clauses[] = 'status = %s';
+            $args[] = $criteria->status;
+        }
+
+        if ($criteria->membershipType !== null) {
+            $clauses[] = 'membership_type = %s';
+            $args[] = $criteria->membershipType;
+        }
+
+        if ($criteria->search !== null) {
+            $clauses[] = 'member_number LIKE %s';
+            $args[] = '%' . $wpdb->esc_like($criteria->search) . '%';
+        }
+
+        $where = $clauses === [] ? '' : ' WHERE ' . implode(' AND ', $clauses);
+
+        return [$where, $args];
     }
 
     private function hydrate(array $row): Member
     {
         return new Member(
             id: (int) $row['id'],
+            uuid: $row['uuid'],
             wpUserId: $row['wp_user_id'] !== null ? (int) $row['wp_user_id'] : null,
             memberNumber: $row['member_number'],
             status: $row['status'],
             membershipType: $row['membership_type'],
             joinedAt: $row['joined_at'],
+            expiresAt: $row['expires_at'],
             approvedAt: $row['approved_at'],
         );
     }

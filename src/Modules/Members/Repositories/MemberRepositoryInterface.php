@@ -7,6 +7,7 @@ namespace AssociationManager\Modules\Members\Repositories;
 use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 
 defined('ABSPATH') || exit;
 
@@ -27,7 +28,7 @@ interface MemberRepositoryInterface
     /**
      * @return PaginatedResult<Member>
      */
-    public function paginateByStatus(string $status, PaginationParams $params): PaginatedResult;
+    public function search(MemberSearchCriteria $criteria, PaginationParams $params): PaginatedResult;
 
     public function insert(Member $member): int;
 

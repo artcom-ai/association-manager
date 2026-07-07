@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+use AssociationManager\Database\DatabaseManager;
+use AssociationManager\Database\MigrationInterface;
+
+return new class implements MigrationInterface {
+    public function id(): string
+    {
+        return '004_extend_members_table';
+    }
+
+    public function up(): void
+    {
+        global $wpdb;
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        $table = DatabaseManager::table('members');
+        $charset = DatabaseManager::charsetCollate();
+
+        $sql = "
+            CREATE TABLE {$table} (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                wp_user_id BIGINT UNSIGNED NULL,
+                uuid CHAR(36) NULL,
+                member_number VARCHAR(50) NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'candidate',
+                membership_type VARCHAR(100) NULL,
+                joined_at DATETIME NULL,
+                expires_at DATETIME NULL,
+                approved_at DATETIME NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY uuid (uuid),
+                KEY wp_user_id (wp_user_id),
+                KEY member_number (member_number),
+                KEY status (status)
+            ) {$charset};
+        ";
+
+        dbDelta($sql);
+
+        $this->backfillUuids($table);
+    }
+
+    private function backfillUuids(string $table): void
+    {
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            "SELECT id FROM {$table} WHERE uuid IS NULL OR uuid = ''",
+            ARRAY_A
+        );
+
+        foreach ($rows ?: [] as $row) {
+            $wpdb->update(
+                $table,
+                ['uuid' => wp_generate_uuid4()],
+                ['id' => (int) $row['id']],
+                ['%s'],
+                ['%d']
+            );
+        }
+    }
+};

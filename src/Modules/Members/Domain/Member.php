@@ -10,11 +10,13 @@ final class Member
 {
     public function __construct(
         public readonly ?int $id,
+        public readonly ?string $uuid,
         public readonly ?int $wpUserId,
         public readonly ?string $memberNumber,
         public readonly string $status,
         public readonly ?string $membershipType,
         public readonly ?string $joinedAt,
+        public readonly ?string $expiresAt,
         public readonly ?string $approvedAt,
     ) {
     }
@@ -23,37 +25,47 @@ final class Member
     {
         return new self(
             id: null,
+            uuid: null,
             wpUserId: $wpUserId,
             memberNumber: null,
             status: MemberStatus::CANDIDATE,
             membershipType: $membershipType,
             joinedAt: null,
+            expiresAt: null,
             approvedAt: null,
         );
     }
 
-    public function approve(string $approvedAt): self
+    /**
+     * Pure state transition - no WordPress calls here. Callers (Service
+     * layer) supply $approvedAt when the transition should stamp it.
+     */
+    public function withStatus(string $status, ?string $approvedAt = null): self
     {
         return new self(
             id: $this->id,
+            uuid: $this->uuid,
             wpUserId: $this->wpUserId,
             memberNumber: $this->memberNumber,
-            status: MemberStatus::ACTIVE,
+            status: $status,
             membershipType: $this->membershipType,
-            joinedAt: $this->joinedAt ?? $approvedAt,
-            approvedAt: $approvedAt,
+            joinedAt: $this->joinedAt,
+            expiresAt: $this->expiresAt,
+            approvedAt: $approvedAt ?? $this->approvedAt,
         );
     }
 
-    public function suspend(): self
+    public function withExpiresAt(?string $expiresAt): self
     {
         return new self(
             id: $this->id,
+            uuid: $this->uuid,
             wpUserId: $this->wpUserId,
             memberNumber: $this->memberNumber,
-            status: MemberStatus::SUSPENDED,
+            status: $this->status,
             membershipType: $this->membershipType,
             joinedAt: $this->joinedAt,
+            expiresAt: $expiresAt,
             approvedAt: $this->approvedAt,
         );
     }
