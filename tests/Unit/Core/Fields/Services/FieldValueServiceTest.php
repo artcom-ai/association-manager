@@ -1,0 +1,113 @@
+<?php
+
+declare(strict_types=1);
+
+namespace AssociationManager\Tests\Unit\Core\Fields\Services;
+
+use AssociationManager\Core\Fields\FieldDefinition;
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\FieldValidationException;
+use AssociationManager\Core\Fields\Repositories\FieldValueRepository;
+use AssociationManager\Core\Fields\Services\FieldValidator;
+use AssociationManager\Core\Fields\Services\FieldValueService;
+use AssociationManager\Tests\Support\TestCase;
+
+final class FieldValueServiceTest extends TestCase
+{
+    private FieldRegistry $registry;
+    private FieldValueService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->registry = new FieldRegistry();
+        $this->service = new FieldValueService($this->registry, new FieldValueRepository(), new FieldValidator());
+
+        $this->registry->register('member', new FieldDefinition(
+            key: 'education',
+            label: 'Education',
+            type: FieldDefinition::TYPE_SELECT,
+            required: true,
+            options: ['bachelor' => 'Bachelor', 'phd' => 'PhD'],
+        ));
+        $this->registry->register('member', new FieldDefinition(
+            key: 'specialty',
+            label: 'Specialty',
+            type: FieldDefinition::TYPE_TEXT,
+        ));
+    }
+
+    public function testValidateReturnsErrorsForInvalidValuesOnly(): void
+    {
+        $errors = $this->service->validate('member', ['education' => 'not-an-option']);
+
+        $this->assertArrayHasKey('education', $errors);
+    }
+
+    public function testUnknownFieldKeysAreSilentlyIgnored(): void
+    {
+        $errors = $this->service->validate('member', ['not_a_registered_field' => 'anything']);
+
+        $this->assertSame([], $errors);
+    }
+
+    public function testSaveThrowsOnInvalidValueAndPersistsNothing(): void
+    {
+        $this->expectException(FieldValidationException::class);
+
+        $this->service->save('member', 1, ['education' => 'invalid']);
+    }
+
+    public function testSaveThenValuesForRoundTrips(): void
+    {
+        $this->service->save('member', 1, ['education' => 'phd', 'specialty' => 'Ψυχοθεραπεία']);
+
+        $values = $this->service->valuesFor('member', 1);
+
+        $this->assertSame('phd', $values['education']);
+        $this->assertSame('Ψυχοθεραπεία', $values['specialty']);
+    }
+
+    public function testPartialSaveLeavesOtherFieldsUntouched(): void
+    {
+        $this->service->save('member', 1, ['education' => 'phd', 'specialty' => 'Original']);
+
+        $this->service->save('member', 1, ['specialty' => 'Updated']);
+
+        $values = $this->service->valuesFor('member', 1);
+        $this->assertSame('phd', $values['education'], 'untouched field must survive a partial save');
+        $this->assertSame('Updated', $values['specialty']);
+    }
+
+    public function testSavingNullClearsAnExistingValue(): void
+    {
+        $this->service->save('member', 1, ['specialty' => 'Something']);
+
+        $this->service->save('member', 1, ['specialty' => null]);
+
+        $this->assertArrayNotHasKey('specialty', $this->service->valuesFor('member', 1));
+    }
+
+    public function testHandleFileUploadStoresTheAttachmentId(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 4242;
+
+        $attachmentId = $this->service->handleFileUpload('member', 1, 'id_document', [
+            'name' => 'id.pdf',
+            'type' => 'application/pdf',
+            'tmp_name' => '/tmp/fake',
+            'error' => 0,
+            'size' => 123,
+        ]);
+
+        $this->assertSame(4242, $attachmentId);
+        $this->assertSame('4242', $this->service->valuesFor('member', 1)['id_document']);
+    }
+}
