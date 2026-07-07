@@ -250,7 +250,8 @@ final class MembersModule implements ModuleInterface
                         ($data['membership_type'] ?? '') !== '' ? sanitize_text_field((string) $data['membership_type']) : null,
                         ($data['joined_at'] ?? '') !== '' ? (string) $data['joined_at'] : null,
                         ($data['expires_at'] ?? '') !== '' ? (string) $data['expires_at'] : null,
-                        get_current_user_id() ?: null
+                        get_current_user_id() ?: null,
+                        ($data['email'] ?? '') !== '' ? sanitize_text_field((string) $data['email']) : null
                     );
 
                     if ($result['action'] === 'created') {

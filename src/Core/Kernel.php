@@ -9,6 +9,7 @@ use AssociationManager\Database\Migrator;
 use AssociationManager\Modules\Directory\DirectoryModule;
 use AssociationManager\Modules\Events\EventsModule;
 use AssociationManager\Modules\Members\MembersModule;
+use AssociationManager\Modules\Notifications\NotificationsModule;
 use AssociationManager\Modules\Payments\PaymentsModule;
 
 defined('ABSPATH') || exit;
@@ -62,6 +63,10 @@ final class Kernel
             new DirectoryModule(),
             new PaymentsModule(),
             new EventsModule(),
+            // Notifications only ever consumes Members' fired events (plain
+            // WordPress hooks, not container-resolved services), so it has
+            // no registration-order constraint relative to Members.
+            new NotificationsModule(),
         ];
 
         foreach ($modules as $module) {

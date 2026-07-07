@@ -142,6 +142,7 @@ final class MemberRepository implements MemberRepositoryInterface
                 'wp_user_id' => $member->wpUserId,
                 'uuid' => wp_generate_uuid4(),
                 'member_number' => $member->memberNumber,
+                'email' => $member->email,
                 'status' => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at' => $member->joinedAt,
@@ -150,7 +151,7 @@ final class MemberRepository implements MemberRepositoryInterface
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
-            ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+            ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
         );
 
         return (int) $wpdb->insert_id;
@@ -170,6 +171,7 @@ final class MemberRepository implements MemberRepositoryInterface
             $table,
             [
                 'member_number' => $member->memberNumber,
+                'email' => $member->email,
                 'status' => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at' => $member->joinedAt,
@@ -178,7 +180,7 @@ final class MemberRepository implements MemberRepositoryInterface
                 'updated_at' => current_time('mysql'),
             ],
             ['id' => $member->id],
-            ['%s', '%s', '%s', '%s', '%s', '%s', '%s'],
+            ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'],
             ['%d']
         );
     }
@@ -220,6 +222,7 @@ final class MemberRepository implements MemberRepositoryInterface
             uuid: $row['uuid'],
             wpUserId: $row['wp_user_id'] !== null ? (int) $row['wp_user_id'] : null,
             memberNumber: $row['member_number'],
+            email: $row['email'] ?? null,
             status: $row['status'],
             membershipType: $row['membership_type'],
             joinedAt: $row['joined_at'],

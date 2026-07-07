@@ -13,6 +13,7 @@ final class Member
         public readonly ?string $uuid,
         public readonly ?int $wpUserId,
         public readonly ?string $memberNumber,
+        public readonly ?string $email,
         public readonly string $status,
         public readonly ?string $membershipType,
         public readonly ?string $joinedAt,
@@ -21,13 +22,14 @@ final class Member
     ) {
     }
 
-    public static function draft(?int $wpUserId, ?string $membershipType): self
+    public static function draft(?int $wpUserId, ?string $membershipType, ?string $email = null): self
     {
         return new self(
             id: null,
             uuid: null,
             wpUserId: $wpUserId,
             memberNumber: null,
+            email: $email,
             status: MemberStatus::CANDIDATE,
             membershipType: $membershipType,
             joinedAt: null,
@@ -47,6 +49,7 @@ final class Member
             uuid: $this->uuid,
             wpUserId: $this->wpUserId,
             memberNumber: $this->memberNumber,
+            email: $this->email,
             status: $status,
             membershipType: $this->membershipType,
             joinedAt: $this->joinedAt,
@@ -62,6 +65,7 @@ final class Member
             uuid: $this->uuid,
             wpUserId: $this->wpUserId,
             memberNumber: $this->memberNumber,
+            email: $this->email,
             status: $this->status,
             membershipType: $this->membershipType,
             joinedAt: $this->joinedAt,

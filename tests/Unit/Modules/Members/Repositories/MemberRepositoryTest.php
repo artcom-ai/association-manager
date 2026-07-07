@@ -40,6 +40,7 @@ final class MemberRepositoryTest extends TestCase
             uuid: $inserted->uuid,
             wpUserId: $inserted->wpUserId,
             memberNumber: 'M-100',
+            email: $inserted->email,
             status: $inserted->status,
             membershipType: $inserted->membershipType,
             joinedAt: $inserted->joinedAt,

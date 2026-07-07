@@ -115,8 +115,13 @@ final class MembersController
     {
         $wpUserId = $request->get_param('wp_user_id');
         $membershipType = $request->get_param('membership_type');
+        $email = $request->get_param('email');
         $customFields = $request->get_param('custom_fields');
         $customFields = is_array($customFields) ? $customFields : [];
+
+        if ($email !== null && $email !== '' && !is_email((string) $email)) {
+            return $this->fieldValidationError(['email' => ['Must be a valid email address.']]);
+        }
 
         $errors = $this->fieldValueService->validate('member', $customFields);
 
@@ -126,7 +131,8 @@ final class MembersController
 
         $member = $this->service->createMember(
             $wpUserId !== null ? (int) $wpUserId : null,
-            $membershipType !== null ? sanitize_text_field((string) $membershipType) : null
+            $membershipType !== null ? sanitize_text_field((string) $membershipType) : null,
+            $email !== null && $email !== '' ? sanitize_text_field((string) $email) : null
         );
 
         if ($customFields !== []) {
@@ -238,6 +244,7 @@ final class MembersController
             'uuid' => $member->uuid,
             'wp_user_id' => $member->wpUserId,
             'member_number' => $member->memberNumber,
+            'email' => $member->email,
             'status' => $member->status,
             'membership_type' => $member->membershipType,
             'joined_at' => $member->joinedAt,

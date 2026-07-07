@@ -25,6 +25,9 @@ final class MigrationLoaderTest extends TestCase
                 '005_create_member_status_history_table',
                 '006_create_field_values_table',
                 '007_create_membership_renewals_table',
+                '008_add_email_to_members_table',
+                '009_create_notification_templates_table',
+                '010_create_notification_queue_table',
             ],
             $ids
         );

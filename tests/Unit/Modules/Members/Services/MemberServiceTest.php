@@ -67,6 +67,23 @@ final class MemberServiceTest extends TestCase
         $this->assertCount(2, $this->firedActionsNamed('association_manager_member_status_changed'));
     }
 
+    public function testCreateMemberPersistsAndRoundTripsEmail(): void
+    {
+        $member = $this->service->createMember(null, 'individual', 'jane@example.test');
+
+        $this->assertSame('jane@example.test', $member->email);
+
+        $reloaded = $this->service->find($member->id);
+        $this->assertSame('jane@example.test', $reloaded->email);
+    }
+
+    public function testCreateMemberWithoutEmailLeavesItNull(): void
+    {
+        $member = $this->service->createMember(10, 'individual');
+
+        $this->assertNull($member->email);
+    }
+
     public function testActivateSuspendReinstateArchiveLifecycle(): void
     {
         $member = $this->service->createMember(null, 'individual');

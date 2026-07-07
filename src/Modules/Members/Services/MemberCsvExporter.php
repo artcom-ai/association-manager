@@ -40,6 +40,7 @@ final class MemberCsvExporter
                 'id' => (string) $member->id,
                 'uuid' => $member->uuid,
                 'member_number' => $member->memberNumber,
+                'email' => $member->email,
                 'status' => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at' => $member->joinedAt,
@@ -63,7 +64,7 @@ final class MemberCsvExporter
     private function coreColumns(): array
     {
         return [
-            'id', 'uuid', 'member_number', 'status', 'membership_type',
+            'id', 'uuid', 'member_number', 'email', 'status', 'membership_type',
             'joined_at', 'expires_at', 'approved_at',
         ];
     }

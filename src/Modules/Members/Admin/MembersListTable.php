@@ -39,6 +39,7 @@ final class MembersListTable extends \WP_List_Table
         return [
             'cb' => '<input type="checkbox" />',
             'member_number' => __('Member #', 'association-manager'),
+            'email' => __('Email', 'association-manager'),
             'status' => __('Status', 'association-manager'),
             'membership_type' => __('Membership type', 'association-manager'),
             'expires_at' => __('Expires', 'association-manager'),
@@ -70,6 +71,7 @@ final class MembersListTable extends \WP_List_Table
     public function column_default($item, $column_name): string
     {
         return match ($column_name) {
+            'email' => esc_html($item->email ?? '—'),
             'status' => esc_html($item->status),
             'membership_type' => esc_html($item->membershipType ?? '—'),
             'expires_at' => esc_html($item->expiresAt ?? '—'),

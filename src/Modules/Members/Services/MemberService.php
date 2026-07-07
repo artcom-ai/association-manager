@@ -28,9 +28,9 @@ final class MemberService
     ) {
     }
 
-    public function createMember(?int $wpUserId, ?string $membershipType): Member
+    public function createMember(?int $wpUserId, ?string $membershipType, ?string $email = null): Member
     {
-        $id = $this->repository->insert(Member::draft($wpUserId, $membershipType));
+        $id = $this->repository->insert(Member::draft($wpUserId, $membershipType, $email));
 
         $member = $this->mustFind($id);
 
@@ -110,6 +110,7 @@ final class MemberService
             uuid: $member->uuid,
             wpUserId: $member->wpUserId,
             memberNumber: $member->memberNumber,
+            email: $member->email,
             status: $member->status,
             membershipType: $membershipType,
             joinedAt: $member->joinedAt,
@@ -138,7 +139,8 @@ final class MemberService
         ?string $membershipType,
         ?string $joinedAt,
         ?string $expiresAt,
-        ?int $importedBy = null
+        ?int $importedBy = null,
+        ?string $email = null
     ): array {
         if ($status !== null && $this->statuses->get($status) === null) {
             throw new \InvalidArgumentException("Unknown status \"{$status}\".");
@@ -152,6 +154,7 @@ final class MemberService
                 uuid: null,
                 wpUserId: null,
                 memberNumber: $memberNumber,
+                email: $email,
                 status: $status ?? MemberStatus::CANDIDATE,
                 membershipType: $membershipType,
                 joinedAt: $joinedAt,
@@ -172,6 +175,7 @@ final class MemberService
             uuid: $existing->uuid,
             wpUserId: $existing->wpUserId,
             memberNumber: $memberNumber,
+            email: $email ?? $existing->email,
             status: $status ?? $existing->status,
             membershipType: $membershipType ?? $existing->membershipType,
             joinedAt: $joinedAt ?? $existing->joinedAt,

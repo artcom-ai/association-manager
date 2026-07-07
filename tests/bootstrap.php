@@ -38,7 +38,9 @@ function submit_button($text = '') { echo "<button>{$text}</button>"; }
 function wp_kses_post($text) { return (string) $text; }
 function dbDelta($sql) { /* no-op: FakeWpdb doesn't model real schema DDL */ }
 function sanitize_text_field($value) { return trim((string) $value); }
+function sanitize_textarea_field($value) { return trim((string) $value); }
 function wp_json_encode($data) { return json_encode($data); }
+function is_email($email) { return filter_var((string) $email, FILTER_VALIDATE_EMAIL) !== false; }
 
 // --- nonces / auth ---
 function wp_nonce_field($action = -1, $name = '_wpnonce', $referer = true, $echo = true) { return ''; }
@@ -54,6 +56,7 @@ function wp_die($message = '') { throw new \RuntimeException('wp_die: ' . (is_st
 function admin_url($path = '') { return 'http://example.test/wp-admin/' . ltrim((string) $path, '/'); }
 function home_url($path = '') { return 'http://example.test/' . ltrim((string) $path, '/'); }
 function add_query_arg($args, $url = '') { return $url . '?' . http_build_query((array) $args); }
+function remove_query_arg($keys, $url = '') { return $url; }
 function wp_safe_redirect($location, $status = 302) { $GLOBALS['__am_test_last_redirect'] = $location; }
 
 // --- hooks ---
@@ -101,6 +104,23 @@ function wp_generate_uuid4() {
 $GLOBALS['__am_test_media_upload_result'] = 1;
 function media_handle_upload($fieldKey, $postId) {
     return $GLOBALS['__am_test_media_upload_result'];
+}
+
+// --- options ---
+$GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
+function get_option($key, $default = false) { return $GLOBALS['__am_test_options'][$key] ?? $default; }
+function update_option($key, $value, $autoload = null) { $GLOBALS['__am_test_options'][$key] = $value; return true; }
+
+// --- WP users (for Member -> WP account email fallback) ---
+$GLOBALS['__am_test_users'] = [];
+function get_userdata($userId) { return $GLOBALS['__am_test_users'][$userId] ?? false; }
+
+// --- mail - tests configure success/failure and inspect what was "sent" ---
+$GLOBALS['__am_test_mail_result'] = true;
+$GLOBALS['__am_test_sent_mail'] = [];
+function wp_mail($to, $subject, $message, $headers = '', $attachments = []) {
+    $GLOBALS['__am_test_sent_mail'][] = ['to' => $to, 'subject' => $subject, 'message' => $message];
+    return $GLOBALS['__am_test_mail_result'];
 }
 
 // --- WP REST / error primitives ---
