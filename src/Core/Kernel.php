@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AssociationManager\Core;
 
 use AssociationManager\Core\Providers\CoreServiceProvider;
+use AssociationManager\Modules\Directory\DirectoryModule;
 use AssociationManager\Modules\Members\MembersModule;
 
 defined('ABSPATH') || exit;
@@ -52,7 +53,10 @@ final class Kernel
         $moduleManager = $this->container->get(ModuleManager::class);
 
         $modules = [
+            // Directory depends on Members' MemberRepositoryInterface, so
+            // Members must register() first (see ADR-004).
             new MembersModule(),
+            new DirectoryModule(),
         ];
 
         foreach ($modules as $module) {

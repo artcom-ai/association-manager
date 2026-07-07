@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace AssociationManager\Modules\Directory\Public;
+
+use AssociationManager\Modules\Directory\Services\DirectoryService;
+
+defined('ABSPATH') || exit;
+
+final class DirectoryShortcode
+{
+    public const TAG = 'association_manager_directory';
+
+    public function __construct(
+        private readonly DirectoryService $service
+    ) {
+    }
+
+    public function register(): void
+    {
+        add_shortcode(self::TAG, [$this, 'render']);
+    }
+
+    public function render(): string
+    {
+        $entries = $this->service->listPublicEntries();
+
+        ob_start();
+        require AM_PLUGIN_DIR . 'templates/public/directory.php';
+
+        return (string) ob_get_clean();
+    }
+}
