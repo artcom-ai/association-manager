@@ -270,6 +270,33 @@ final class MemberService {
         return $this->repository->find( $id );
     }
 
+    public function findByWpUserId( int $wpUserId ): ?Member {
+        return $this->repository->findByWpUserId( $wpUserId );
+    }
+
+    /**
+     * Best-effort contact email for a member: their own stored email if
+     * set, otherwise their linked WP account's email. Returns null if
+     * neither is available (e.g. an unlinked member with no email on
+     * file) - callers are expected to treat that as "cannot notify this
+     * member" rather than an error.
+     */
+    public function resolveEmail( Member $member ): ?string {
+        if ( $member->email !== null && $member->email !== '' ) {
+            return $member->email;
+        }
+
+        if ( $member->wpUserId !== null ) {
+            $user = get_userdata( $member->wpUserId );
+
+            if ( $user !== false && ! empty( $user->user_email ) ) {
+                return $user->user_email;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @return Member[]
      */

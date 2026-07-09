@@ -8,15 +8,16 @@ use AssociationManager\Core\Container;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Certificates\Services\CertificateService;
 use AssociationManager\Modules\Documents\Services\DocumentService;
-use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
+use AssociationManager\Modules\Members\Services\MemberService;
+use AssociationManager\Modules\Notifications\Services\NotificationService;
 use AssociationManager\Modules\Portal\Public\PortalShortcode;
 use AssociationManager\Modules\Portal\Services\PortalService;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Depends on Members/Documents/Certificates - registered last in
- * Kernel::registerModules() so all three have already register()'d
+ * Depends on Members/Documents/Certificates/Notifications - registered
+ * last in Kernel::registerModules() so all four have already register()'d
  * their services (same ADR-004 interface-dependency reasoning).
  */
 final class PortalModule implements ModuleInterface {
@@ -29,9 +30,10 @@ final class PortalModule implements ModuleInterface {
         $container->set(
             PortalService::class,
             new PortalService(
-                $container->get( MemberRepositoryInterface::class ),
+                $container->get( MemberService::class ),
                 $container->get( DocumentService::class ),
                 $container->get( CertificateService::class ),
+                $container->get( NotificationService::class ),
             )
         );
     }

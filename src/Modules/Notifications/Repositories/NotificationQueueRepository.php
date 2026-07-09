@@ -81,6 +81,25 @@ final class NotificationQueueRepository implements NotificationQueueRepositoryIn
     }
 
     /**
+     * @return QueuedNotification[]
+     */
+    public function allForRecipient( string $email ): array {
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'notification_queue' );
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE recipient = %s ORDER BY id DESC",
+                $email
+            ),
+            ARRAY_A
+        );
+
+        return array_map( fn ( array $row ): QueuedNotification => $this->hydrate( $row ), $rows ?: [] );
+    }
+
+    /**
      * @param array<string, mixed> $row
      */
     private function hydrate( array $row ): QueuedNotification {

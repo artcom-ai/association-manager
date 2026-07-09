@@ -20,4 +20,12 @@ interface NotificationQueueRepositoryInterface {
     public function findDue( string $now ): array;
 
     public function update( QueuedNotification $notification ): void;
+
+    /**
+     * All notifications ever queued for a recipient email, newest first -
+     * the Portal's member-facing notification list.
+     *
+     * @return QueuedNotification[]
+     */
+    public function allForRecipient( string $email ): array;
 }

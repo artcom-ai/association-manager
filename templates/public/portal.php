@@ -7,6 +7,14 @@ defined('ABSPATH') || exit;
 /** @var \AssociationManager\Modules\Members\Domain\Member $member */
 /** @var \AssociationManager\Modules\Documents\Domain\Document[] $documents */
 /** @var \AssociationManager\Modules\Certificates\Domain\Certificate[] $certificates */
+/** @var \AssociationManager\Modules\Notifications\Domain\QueuedNotification[] $notifications */
+
+$notificationStatusLabels = [
+    'pending' => __('Pending', 'association-manager'),
+    'sent' => __('New', 'association-manager'),
+    'failed' => __('Failed', 'association-manager'),
+    'read' => __('Read', 'association-manager'),
+];
 ?>
 <div class="am-portal">
     <section class="am-portal-profile">
@@ -98,6 +106,18 @@ defined('ABSPATH') || exit;
 
     <section class="am-portal-notifications">
         <h2><?php esc_html_e('Notifications', 'association-manager'); ?></h2>
-        <p><?php esc_html_e('Your notification history will appear here in a future update.', 'association-manager'); ?></p>
+        <?php if (empty($notifications)) : ?>
+            <p><?php esc_html_e('No notifications yet.', 'association-manager'); ?></p>
+        <?php else : ?>
+            <ul>
+                <?php foreach ($notifications as $notification) : ?>
+                    <li>
+                        <strong><?php echo esc_html($notificationStatusLabels[$notification->status] ?? $notification->status); ?></strong>
+                        &mdash; <?php echo esc_html($notification->subject); ?>
+                        &mdash; <?php echo esc_html($notification->scheduledAt); ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </section>
 </div>

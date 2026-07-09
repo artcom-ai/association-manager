@@ -8,7 +8,12 @@ use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Modules\Certificates\Domain\Certificate;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
+use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
+use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepository;
+use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepository;
+use AssociationManager\Modules\Members\Services\MemberService;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
 use AssociationManager\Modules\Notifications\NotificationsModule;
@@ -32,6 +37,7 @@ final class NotificationsModuleTest extends TestCase
     private NotificationTemplateRepository $templates;
     private NotificationQueueRepository $queue;
     private NotificationDispatcher $dispatcher;
+    private MemberService $members;
 
     protected function setUp(): void
     {
@@ -45,6 +51,14 @@ final class NotificationsModuleTest extends TestCase
             $this->templates,
             $this->queue,
             new TemplateRenderer(),
+        );
+
+        $this->members = new MemberService(
+            new MemberRepository(),
+            new MemberStatusHistoryRepository(),
+            new MemberStatusRegistry(),
+            new MembershipPlanRegistry(),
+            new MembershipRenewalRepository(),
         );
 
         $this->setNow('2026-01-01 00:00:00');
@@ -98,27 +112,27 @@ final class NotificationsModuleTest extends TestCase
         $this->assertCount(0, $this->queue->findDue('2026-01-01 00:00:00'));
     }
 
-    public function testResolveMemberEmailPrefersOwnEmailOverWpAccount(): void
+    public function testResolveEmailPrefersOwnEmailOverWpAccount(): void
     {
         $this->setUserEmail(5, 'wp-account@example.test');
         $member = new Member(1, 'uuid-1', 5, 'M-001', 'own@example.test', 'active', 'individual', null, null, null);
 
-        $this->assertSame('own@example.test', $this->invokeResolveMemberEmail($member));
+        $this->assertSame('own@example.test', $this->members->resolveEmail($member));
     }
 
-    public function testResolveMemberEmailFallsBackToWpAccountWhenOwnEmailIsNull(): void
+    public function testResolveEmailFallsBackToWpAccountWhenOwnEmailIsNull(): void
     {
         $this->setUserEmail(5, 'wp-account@example.test');
         $member = new Member(1, 'uuid-1', 5, 'M-001', null, 'active', 'individual', null, null, null);
 
-        $this->assertSame('wp-account@example.test', $this->invokeResolveMemberEmail($member));
+        $this->assertSame('wp-account@example.test', $this->members->resolveEmail($member));
     }
 
-    public function testResolveMemberEmailReturnsNullWhenNeitherIsPresent(): void
+    public function testResolveEmailReturnsNullWhenNeitherIsPresent(): void
     {
         $member = new Member(1, 'uuid-1', null, 'M-001', null, 'active', 'individual', null, null, null);
 
-        $this->assertNull($this->invokeResolveMemberEmail($member));
+        $this->assertNull($this->members->resolveEmail($member));
     }
 
     public function testDocumentPublishedNotifiesAdminAddress(): void
@@ -138,14 +152,13 @@ final class NotificationsModuleTest extends TestCase
 
     public function testCertificateIssuedNotifiesTheMember(): void
     {
-        $members = new MemberRepository();
-        $memberId = $members->insert(Member::draft(null, 'individual', 'jane@example.test'));
+        $memberId = $this->members->createMember(null, 'individual', 'jane@example.test')->requireId();
 
         $certificate = Certificate::draft($memberId, 'membership', 77, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00');
 
         $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
         $method->setAccessible(true);
-        $method->invoke($this->module, $this->dispatcher, $members, $certificate);
+        $method->invoke($this->module, $this->dispatcher, $this->members, $certificate);
 
         $due = $this->queue->findDue('2026-01-01 00:00:00');
         $this->assertCount(1, $due);
@@ -155,12 +168,11 @@ final class NotificationsModuleTest extends TestCase
 
     public function testCertificateIssuedForUnknownMemberDoesNotEnqueue(): void
     {
-        $members = new MemberRepository();
         $certificate = Certificate::draft(999, 'membership', 77, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00');
 
         $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
         $method->setAccessible(true);
-        $method->invoke($this->module, $this->dispatcher, $members, $certificate);
+        $method->invoke($this->module, $this->dispatcher, $this->members, $certificate);
 
         $this->assertCount(0, $this->queue->findDue('2026-01-01 00:00:00'));
     }
@@ -169,14 +181,6 @@ final class NotificationsModuleTest extends TestCase
     {
         $method = new ReflectionMethod(NotificationsModule::class, 'handleMemberStatusChanged');
         $method->setAccessible(true);
-        $method->invoke($this->module, $this->dispatcher, $member, $oldStatus, $newStatus);
-    }
-
-    private function invokeResolveMemberEmail(Member $member): ?string
-    {
-        $method = new ReflectionMethod(NotificationsModule::class, 'resolveMemberEmail');
-        $method->setAccessible(true);
-
-        return $method->invoke($this->module, $member);
+        $method->invoke($this->module, $this->dispatcher, $this->members, $member, $oldStatus, $newStatus);
     }
 }

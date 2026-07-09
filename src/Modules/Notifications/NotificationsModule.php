@@ -12,7 +12,7 @@ use AssociationManager\Modules\Certificates\Domain\Certificate;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
-use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
+use AssociationManager\Modules\Members\Services\MemberService;
 use AssociationManager\Modules\Notifications\Admin\NotificationTemplatesPage;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
@@ -21,11 +21,20 @@ use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepos
 use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepository;
 use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepositoryInterface;
 use AssociationManager\Modules\Notifications\Rest\NotificationsController;
+use AssociationManager\Modules\Notifications\Services\EmailAdapter;
 use AssociationManager\Modules\Notifications\Services\NotificationDispatcher;
 use AssociationManager\Modules\Notifications\Services\NotificationQueueRunner;
+use AssociationManager\Modules\Notifications\Services\NotificationService;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Depends on Members' MemberService (not just its Repository interface -
+ * resolveEmail()/findByWpUserId() are Service-layer concerns) to resolve
+ * a member's contact email and to look up members by id - same
+ * interface-dependency pattern as ADR-004, so Members must register()
+ * before Notifications (see Kernel::registerModules()).
+ */
 final class NotificationsModule implements ModuleInterface {
 
     private const QUEUE_CRON_HOOK = 'association_manager_process_notification_queue';
@@ -37,6 +46,7 @@ final class NotificationsModule implements ModuleInterface {
     public function register( Container $container ): void {
         $container->set( NotificationTemplateRepositoryInterface::class, new NotificationTemplateRepository() );
         $container->set( NotificationQueueRepositoryInterface::class, new NotificationQueueRepository() );
+        $container->set( EmailAdapter::class, new EmailAdapter() );
 
         $container->set(
             NotificationDispatcher::class,
@@ -49,7 +59,15 @@ final class NotificationsModule implements ModuleInterface {
 
         $container->set(
             NotificationQueueRunner::class,
-            new NotificationQueueRunner( $container->get( NotificationQueueRepositoryInterface::class ) )
+            new NotificationQueueRunner(
+                $container->get( NotificationQueueRepositoryInterface::class ),
+                $container->get( EmailAdapter::class ),
+            )
+        );
+
+        $container->set(
+            NotificationService::class,
+            new NotificationService( $container->get( NotificationQueueRepositoryInterface::class ) )
         );
     }
 
@@ -57,7 +75,7 @@ final class NotificationsModule implements ModuleInterface {
         $dispatcher  = $container->get( NotificationDispatcher::class );
         $templates   = $container->get( NotificationTemplateRepositoryInterface::class );
         $queueRunner = $container->get( NotificationQueueRunner::class );
-        $members     = $container->get( MemberRepositoryInterface::class );
+        $members     = $container->get( MemberService::class );
 
         $container->get( AdminMenu::class )->register( new NotificationTemplatesPage( $templates ) );
 
@@ -89,8 +107,8 @@ final class NotificationsModule implements ModuleInterface {
 
         add_action(
             'association_manager_member_status_changed',
-            function ( Member $member, ?string $oldStatus, string $newStatus ) use ( $dispatcher ): void {
-                $this->handleMemberStatusChanged( $dispatcher, $member, $oldStatus, $newStatus );
+            function ( Member $member, ?string $oldStatus, string $newStatus ) use ( $dispatcher, $members ): void {
+                $this->handleMemberStatusChanged( $dispatcher, $members, $member, $oldStatus, $newStatus );
             },
             10,
             3
@@ -98,10 +116,10 @@ final class NotificationsModule implements ModuleInterface {
 
         add_action(
             'association_manager_member_renewed',
-            function ( Member $member, string $newExpiresAt ) use ( $dispatcher ): void {
+            function ( Member $member, string $newExpiresAt ) use ( $dispatcher, $members ): void {
                 $dispatcher->notify(
                     'membership_renewed',
-                    $this->resolveMemberEmail( $member ),
+                    $members->resolveEmail( $member ),
                     [
                         'member_number' => $member->memberNumber ?? '',
                         'expires_at'    => $newExpiresAt,
@@ -151,7 +169,7 @@ final class NotificationsModule implements ModuleInterface {
 
     private function handleCertificateIssued(
         NotificationDispatcher $dispatcher,
-        MemberRepositoryInterface $members,
+        MemberService $members,
         Certificate $certificate
     ): void {
         $member = $members->find( $certificate->memberId );
@@ -162,7 +180,7 @@ final class NotificationsModule implements ModuleInterface {
 
         $dispatcher->notify(
             'certificate_issued',
-            $this->resolveMemberEmail( $member ),
+            $members->resolveEmail( $member ),
             [
                 'member_number' => $member->memberNumber ?? '',
                 'type_key'      => $certificate->typeKey,
@@ -173,6 +191,7 @@ final class NotificationsModule implements ModuleInterface {
 
     private function handleMemberStatusChanged(
         NotificationDispatcher $dispatcher,
+        MemberService $members,
         Member $member,
         ?string $oldStatus,
         string $newStatus
@@ -199,28 +218,7 @@ final class NotificationsModule implements ModuleInterface {
             return;
         }
 
-        $dispatcher->notify( $eventKey, $this->resolveMemberEmail( $member ), $placeholders );
-    }
-
-    /**
-     * Prefer the member's own email; fall back to their linked WP
-     * account's email if they have one; otherwise there's nowhere to
-     * send to (the dispatcher no-ops on a null recipient).
-     */
-    private function resolveMemberEmail( Member $member ): ?string {
-        if ( $member->email !== null && $member->email !== '' ) {
-            return $member->email;
-        }
-
-        if ( $member->wpUserId !== null ) {
-            $user = get_userdata( $member->wpUserId );
-
-            if ( $user !== false && ! empty( $user->user_email ) ) {
-                return $user->user_email;
-            }
-        }
-
-        return null;
+        $dispatcher->notify( $eventKey, $members->resolveEmail( $member ), $placeholders );
     }
 
     private function handleSaveNotificationTemplate( NotificationTemplateRepositoryInterface $templates ): void {

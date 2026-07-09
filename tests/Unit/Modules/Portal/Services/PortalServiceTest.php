@@ -15,15 +15,30 @@ use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Repositories\DocumentRepository;
 use AssociationManager\Modules\Documents\Services\DocumentService;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
+use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
+use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepository;
+use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepository;
+use AssociationManager\Modules\Members\Services\MemberService;
+use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
+use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
+use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepository;
+use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepository;
+use AssociationManager\Modules\Notifications\Services\NotificationDispatcher;
+use AssociationManager\Modules\Notifications\Services\NotificationService;
 use AssociationManager\Modules\Portal\Services\PortalService;
 use AssociationManager\Tests\Support\TestCase;
 
 final class PortalServiceTest extends TestCase
 {
     private MemberRepository $members;
+    private MemberService $memberService;
     private DocumentRepository $documentRepository;
     private CertificateRepository $certificateRepository;
+    private NotificationQueueRepository $notificationQueue;
+    private NotificationTemplateRepository $notificationTemplates;
+    private NotificationDispatcher $dispatcher;
     private PortalService $service;
 
     protected function setUp(): void
@@ -31,18 +46,36 @@ final class PortalServiceTest extends TestCase
         parent::setUp();
 
         $this->members = new MemberRepository();
+        $this->memberService = new MemberService(
+            $this->members,
+            new MemberStatusHistoryRepository(),
+            new MemberStatusRegistry(),
+            new MembershipPlanRegistry(),
+            new MembershipRenewalRepository(),
+        );
         $this->documentRepository = new DocumentRepository();
         $this->certificateRepository = new CertificateRepository();
+        $this->notificationQueue = new NotificationQueueRepository();
+        $this->notificationTemplates = new NotificationTemplateRepository();
+
+        $this->dispatcher = new NotificationDispatcher(
+            $this->notificationTemplates,
+            $this->notificationQueue,
+            new TemplateRenderer(),
+        );
 
         $this->service = new PortalService(
-            $this->members,
+            $this->memberService,
             new DocumentService($this->documentRepository),
             new CertificateService(
                 new CertificateTemplateRepository(),
                 $this->certificateRepository,
                 new CertificateGenerator(new TemplateRenderer()),
             ),
+            new NotificationService($this->notificationQueue),
         );
+
+        $this->setNow('2026-01-01 00:00:00');
     }
 
     public function testMemberForReturnsTheLinkedMember(): void
@@ -108,5 +141,44 @@ final class PortalServiceTest extends TestCase
         $this->certificateRepository->insert(Certificate::draft($id, 'membership', 1, '2026-01-01 00:00:00', null));
 
         $this->assertCount(0, $this->service->certificatesFor($member));
+    }
+
+    public function testNotificationsForReturnsHistoryForTheMembersResolvedEmail(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual', 'jane@example.test'));
+        $member = $this->members->find($id);
+
+        $this->notificationTemplates->save(new NotificationTemplate(null, 'member_activated', NotificationChannel::EMAIL, 'Welcome', 'Body'));
+        $this->dispatcher->notify('member_activated', 'jane@example.test', []);
+
+        $notifications = $this->service->notificationsFor($member);
+
+        $this->assertCount(1, $notifications);
+        $this->assertSame('jane@example.test', $notifications[0]->recipient);
+    }
+
+    public function testNotificationsForReturnsEmptyWhenMemberHasNoResolvableEmail(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $this->assertSame([], $this->service->notificationsFor($member));
+    }
+
+    public function testMarkNotificationsReadForMarksSentNotificationsAsRead(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual', 'jane@example.test'));
+        $member = $this->members->find($id);
+
+        $this->notificationTemplates->save(new NotificationTemplate(null, 'member_activated', NotificationChannel::EMAIL, 'Welcome', 'Body'));
+        $this->dispatcher->notify('member_activated', 'jane@example.test', []);
+
+        $queued = $this->notificationQueue->allForRecipient('jane@example.test')[0];
+        $this->notificationQueue->update($queued->markSent('2026-01-01 00:00:00'));
+
+        $this->service->markNotificationsReadFor($member);
+
+        $updated = $this->notificationQueue->allForRecipient('jane@example.test')[0];
+        $this->assertSame('read', $updated->status);
     }
 }

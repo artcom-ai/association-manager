@@ -9,6 +9,7 @@ use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationStatus;
 use AssociationManager\Modules\Notifications\Domain\QueuedNotification;
 use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepository;
+use AssociationManager\Modules\Notifications\Services\EmailAdapter;
 use AssociationManager\Modules\Notifications\Services\NotificationQueueRunner;
 use AssociationManager\Tests\Support\TestCase;
 
@@ -22,7 +23,7 @@ final class NotificationQueueRunnerTest extends TestCase
         parent::setUp();
 
         $this->queue = new NotificationQueueRepository();
-        $this->runner = new NotificationQueueRunner($this->queue);
+        $this->runner = new NotificationQueueRunner($this->queue, new EmailAdapter());
 
         $this->setNow('2026-01-01 12:00:00');
     }

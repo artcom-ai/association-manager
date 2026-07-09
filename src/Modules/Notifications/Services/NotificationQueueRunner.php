@@ -15,7 +15,8 @@ defined( 'ABSPATH' ) || exit;
 final class NotificationQueueRunner {
 
     public function __construct(
-        private readonly NotificationQueueRepositoryInterface $queue
+        private readonly NotificationQueueRepositoryInterface $queue,
+        private readonly EmailAdapter $mailer,
     ) {
     }
 
@@ -26,7 +27,7 @@ final class NotificationQueueRunner {
         $sent = 0;
 
         foreach ( $due as $notification ) {
-            $result = wp_mail( $notification->recipient, $notification->subject, $notification->body );
+            $result = $this->mailer->send( $notification->recipient, $notification->subject, $notification->body );
 
             if ( $result ) {
                 $this->queue->update( $notification->markSent( current_time( 'mysql' ) ) );

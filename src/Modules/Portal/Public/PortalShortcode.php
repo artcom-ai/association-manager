@@ -42,12 +42,19 @@ final class PortalShortcode {
             return '<p>' . esc_html__( 'Your account is not yet linked to a member record. Please contact the association.', 'association-manager' ) . '</p>';
         }
 
-        $documents    = $this->service->visibleDocuments();
-        $certificates = $this->service->certificatesFor( $member );
+        $documents     = $this->service->visibleDocuments();
+        $certificates  = $this->service->certificatesFor( $member );
+        $notifications = $this->service->notificationsFor( $member );
 
         ob_start();
         require AM_PLUGIN_DIR . 'templates/public/portal.php';
+        $output = (string) ob_get_clean();
 
-        return (string) ob_get_clean();
+        // Marked read after the data has already been fetched for this
+        // render, so this exact view still shows accurate sent/read
+        // status - only the *next* visit reflects everything as read.
+        $this->service->markNotificationsReadFor( $member );
+
+        return $output;
     }
 }

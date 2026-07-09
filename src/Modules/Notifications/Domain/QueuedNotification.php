@@ -77,4 +77,26 @@ final class QueuedNotification {
             lastError: $error,
         );
     }
+
+    /**
+     * Member has viewed this notification in the Portal. Only meaningful
+     * once it's actually been sent - read status is a Portal-facing
+     * concern layered on top of the send lifecycle, not a replacement
+     * for it.
+     */
+    public function markRead(): self {
+        return new self(
+            id: $this->id,
+            eventKey: $this->eventKey,
+            channel: $this->channel,
+            recipient: $this->recipient,
+            subject: $this->subject,
+            body: $this->body,
+            status: NotificationStatus::READ,
+            scheduledAt: $this->scheduledAt,
+            sentAt: $this->sentAt,
+            attempts: $this->attempts,
+            lastError: $this->lastError,
+        );
+    }
 }
