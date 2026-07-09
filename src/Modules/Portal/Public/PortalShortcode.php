@@ -45,6 +45,7 @@ final class PortalShortcode {
         $documents     = $this->service->visibleDocuments();
         $certificates  = $this->service->certificatesFor( $member );
         $notifications = $this->service->notificationsFor( $member );
+        $customFields  = $this->service->customFieldsFor( $member );
 
         ob_start();
         require AM_PLUGIN_DIR . 'templates/public/portal.php';

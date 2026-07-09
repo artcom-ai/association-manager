@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace AssociationManager\Modules\Portal;
 
 use AssociationManager\Core\Container;
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Certificates\Services\CertificateService;
 use AssociationManager\Modules\Documents\Services\DocumentService;
@@ -34,6 +36,8 @@ final class PortalModule implements ModuleInterface {
                 $container->get( DocumentService::class ),
                 $container->get( CertificateService::class ),
                 $container->get( NotificationService::class ),
+                $container->get( FieldRegistry::class ),
+                $container->get( FieldValueService::class ),
             )
         );
     }

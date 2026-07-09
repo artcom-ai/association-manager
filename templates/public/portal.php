@@ -8,6 +8,7 @@ defined('ABSPATH') || exit;
 /** @var \AssociationManager\Modules\Documents\Domain\Document[] $documents */
 /** @var \AssociationManager\Modules\Certificates\Domain\Certificate[] $certificates */
 /** @var \AssociationManager\Modules\Notifications\Domain\QueuedNotification[] $notifications */
+/** @var array<int, array{field: \AssociationManager\Core\Fields\FieldDefinition, value: ?string}> $customFields */
 
 $notificationStatusLabels = [
     'pending' => __('Pending', 'association-manager'),
@@ -29,6 +30,12 @@ $notificationStatusLabels = [
                 <th><?php esc_html_e('Email', 'association-manager'); ?></th>
                 <td><?php echo esc_html($member->email ?? '—'); ?></td>
             </tr>
+            <?php foreach ($customFields as $row) : ?>
+                <tr>
+                    <th><?php echo esc_html($row['field']->label); ?></th>
+                    <td><?php echo esc_html($row['value'] ?? '—'); ?></td>
+                </tr>
+            <?php endforeach; ?>
             </tbody>
         </table>
         <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>

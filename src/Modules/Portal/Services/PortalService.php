@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Portal\Services;
 
+use AssociationManager\Core\Fields\FieldDefinition;
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Certificates\Domain\Certificate;
 use AssociationManager\Modules\Certificates\Services\CertificateService;
@@ -27,11 +30,15 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PortalService {
 
+    private const MEMBER_ENTITY_TYPE = 'member';
+
     public function __construct(
         private readonly MemberService $members,
         private readonly DocumentService $documents,
         private readonly CertificateService $certificates,
         private readonly NotificationService $notifications,
+        private readonly FieldRegistry $fieldRegistry,
+        private readonly FieldValueService $fieldValueService,
     ) {
     }
 
@@ -89,5 +96,36 @@ final class PortalService {
         }
 
         $this->notifications->markAllReadForRecipient( $email );
+    }
+
+    /**
+     * Any custom field registered against "member" (via FieldRegistry -
+     * Core's own extension point, populated by a module or a per-client
+     * implementation) that's visible at "private" level - the same rank
+     * a logged-in member viewing their own Portal is granted elsewhere in
+     * this class (see visibleDocuments()). Admin-only fields never
+     * appear here. Same FieldRegistry + FieldValueService composition
+     * Directory already uses (see DirectoryService::buildEntry()) - this
+     * is the Portal gaining the same generic capability, not new logic.
+     *
+     * @return array<int, array{field: FieldDefinition, value: ?string}>
+     */
+    public function customFieldsFor( Member $member ): array {
+        $values = $this->fieldValueService->valuesFor( self::MEMBER_ENTITY_TYPE, $member->requireId() );
+
+        $rows = [];
+
+        foreach ( $this->fieldRegistry->forEntityType( self::MEMBER_ENTITY_TYPE ) as $field ) {
+            if ( ! $field->isVisibleTo( Visibility::VISIBILITY_PRIVATE ) ) {
+                continue;
+            }
+
+            $rows[] = [
+				'field' => $field,
+				'value' => $values[ $field->key ] ?? null,
+			];
+        }
+
+        return $rows;
     }
 }

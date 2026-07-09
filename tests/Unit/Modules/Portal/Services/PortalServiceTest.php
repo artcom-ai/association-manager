@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace AssociationManager\Tests\Unit\Modules\Portal\Services;
 
+use AssociationManager\Core\Fields\FieldDefinition;
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Repositories\FieldValueRepository;
+use AssociationManager\Core\Fields\Services\FieldValidator;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Certificates\Domain\Certificate;
@@ -39,6 +44,8 @@ final class PortalServiceTest extends TestCase
     private NotificationQueueRepository $notificationQueue;
     private NotificationTemplateRepository $notificationTemplates;
     private NotificationDispatcher $dispatcher;
+    private FieldRegistry $fieldRegistry;
+    private FieldValueService $fieldValueService;
     private PortalService $service;
 
     protected function setUp(): void
@@ -64,6 +71,13 @@ final class PortalServiceTest extends TestCase
             new TemplateRenderer(),
         );
 
+        $this->fieldRegistry = new FieldRegistry();
+        $this->fieldValueService = new FieldValueService(
+            $this->fieldRegistry,
+            new FieldValueRepository(),
+            new FieldValidator(),
+        );
+
         $this->service = new PortalService(
             $this->memberService,
             new DocumentService($this->documentRepository),
@@ -73,6 +87,8 @@ final class PortalServiceTest extends TestCase
                 new CertificateGenerator(new TemplateRenderer()),
             ),
             new NotificationService($this->notificationQueue),
+            $this->fieldRegistry,
+            $this->fieldValueService,
         );
 
         $this->setNow('2026-01-01 00:00:00');
@@ -180,5 +196,49 @@ final class PortalServiceTest extends TestCase
 
         $updated = $this->notificationQueue->allForRecipient('jane@example.test')[0];
         $this->assertSame('read', $updated->status);
+    }
+
+    public function testCustomFieldsForExcludesAdminOnlyFields(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'specialty',
+            label: 'Specialty',
+            type: FieldDefinition::TYPE_TEXT,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'internal_note',
+            label: 'Internal note',
+            type: FieldDefinition::TYPE_TEXT,
+            visibility: FieldDefinition::VISIBILITY_ADMIN,
+        ));
+        $this->fieldValueService->save('member', $id, ['specialty' => 'Cardiology', 'internal_note' => 'flagged']);
+
+        $rows = $this->service->customFieldsFor($member);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('specialty', $rows[0]['field']->key);
+        $this->assertSame('Cardiology', $rows[0]['value']);
+    }
+
+    public function testCustomFieldsForReturnsNullValueWhenNotSet(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'specialty',
+            label: 'Specialty',
+            type: FieldDefinition::TYPE_TEXT,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+
+        $rows = $this->service->customFieldsFor($member);
+
+        $this->assertCount(1, $rows);
+        $this->assertNull($rows[0]['value']);
     }
 }
