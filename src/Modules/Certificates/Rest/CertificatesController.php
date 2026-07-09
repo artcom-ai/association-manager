@@ -48,7 +48,7 @@ final class CertificatesController {
         }
 
         return new WP_REST_Response(
-            array_map( [ $this, 'toArray' ], $this->service->allForMember( $member->requireId() ) ),
+            array_map( [ $this, 'toArray' ], $this->service->issuedForMember( $member->requireId() ) ),
             200
         );
     }

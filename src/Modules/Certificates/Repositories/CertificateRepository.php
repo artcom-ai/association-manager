@@ -40,6 +40,19 @@ final class CertificateRepository implements CertificateRepositoryInterface {
         return array_map( fn ( array $row ): Certificate => $this->hydrate( $row ), $rows ?: [] );
     }
 
+    /**
+     * @return Certificate[]
+     */
+    public function all(): array {
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'certificates' );
+
+        $rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A );
+
+        return array_map( fn ( array $row ): Certificate => $this->hydrate( $row ), $rows ?: [] );
+    }
+
     public function insert( Certificate $certificate ): int {
         global $wpdb;
 
@@ -51,13 +64,35 @@ final class CertificateRepository implements CertificateRepositoryInterface {
                 'member_id'        => $certificate->memberId,
                 'type_key'         => $certificate->typeKey,
                 'wp_attachment_id' => $certificate->wpAttachmentId,
+                'status'           => $certificate->status,
                 'issued_at'        => $certificate->issuedAt,
                 'issued_by'        => $certificate->issuedBy,
             ],
-            [ '%d', '%s', '%d', '%s', '%d' ]
+            [ '%d', '%s', '%d', '%s', '%s', '%d' ]
         );
 
         return (int) $wpdb->insert_id;
+    }
+
+    public function update( Certificate $certificate ): void {
+        if ( $certificate->id === null ) {
+            throw new \InvalidArgumentException( 'Cannot update a certificate without an id.' );
+        }
+
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'certificates' );
+
+        $wpdb->update(
+            $table,
+            [
+                'status'    => $certificate->status,
+                'issued_at' => $certificate->issuedAt,
+            ],
+            [ 'id' => $certificate->id ],
+            [ '%s', '%s' ],
+            [ '%d' ]
+        );
     }
 
     /**
@@ -69,6 +104,7 @@ final class CertificateRepository implements CertificateRepositoryInterface {
             memberId: (int) $row['member_id'],
             typeKey: $row['type_key'],
             wpAttachmentId: (int) $row['wp_attachment_id'],
+            status: $row['status'],
             issuedAt: $row['issued_at'],
             issuedBy: $row['issued_by'] !== null ? (int) $row['issued_by'] : null,
         );

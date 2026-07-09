@@ -91,12 +91,22 @@ final class PortalServiceTest extends TestCase
         $id = $this->members->insert(Member::draft(null, 'individual'));
         $member = $this->members->find($id);
 
-        $this->certificateRepository->insert(new Certificate(null, $id, 'membership', 1, '2026-01-01 00:00:00', null));
-        $this->certificateRepository->insert(new Certificate(null, 999, 'membership', 2, '2026-01-01 00:00:00', null));
+        $this->certificateRepository->insert(Certificate::draft($id, 'membership', 1, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00'));
+        $this->certificateRepository->insert(Certificate::draft(999, 'membership', 2, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00'));
 
         $certificates = $this->service->certificatesFor($member);
 
         $this->assertCount(1, $certificates);
         $this->assertSame($id, $certificates[0]->memberId);
+    }
+
+    public function testCertificatesForExcludesDraftCertificates(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $this->certificateRepository->insert(Certificate::draft($id, 'membership', 1, '2026-01-01 00:00:00', null));
+
+        $this->assertCount(0, $this->service->certificatesFor($member));
     }
 }

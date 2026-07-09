@@ -141,7 +141,7 @@ final class NotificationsModuleTest extends TestCase
         $members = new MemberRepository();
         $memberId = $members->insert(Member::draft(null, 'individual', 'jane@example.test'));
 
-        $certificate = new Certificate(1, $memberId, 'membership', 77, '2026-01-01 00:00:00', null);
+        $certificate = Certificate::draft($memberId, 'membership', 77, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00');
 
         $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
         $method->setAccessible(true);
@@ -156,7 +156,7 @@ final class NotificationsModuleTest extends TestCase
     public function testCertificateIssuedForUnknownMemberDoesNotEnqueue(): void
     {
         $members = new MemberRepository();
-        $certificate = new Certificate(1, 999, 'membership', 77, '2026-01-01 00:00:00', null);
+        $certificate = Certificate::draft(999, 'membership', 77, '2026-01-01 00:00:00', null)->issue('2026-01-01 00:00:00');
 
         $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
         $method->setAccessible(true);

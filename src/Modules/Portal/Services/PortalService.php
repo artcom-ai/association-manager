@@ -50,6 +50,6 @@ final class PortalService {
      * @return Certificate[]
      */
     public function certificatesFor( Member $member ): array {
-        return $this->certificates->allForMember( $member->requireId() );
+        return $this->certificates->issuedForMember( $member->requireId() );
     }
 }

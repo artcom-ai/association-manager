@@ -7,15 +7,17 @@ namespace AssociationManager\Modules\Certificates\Admin;
 use AssociationManager\Core\Admin\AdminPageInterface;
 use AssociationManager\Core\Admin\DashboardPage;
 use AssociationManager\Modules\Certificates\Repositories\CertificateTemplateRepositoryInterface;
+use AssociationManager\Modules\Certificates\Services\CertificateService;
 
 defined( 'ABSPATH' ) || exit;
 
-final class IssueCertificatePage implements AdminPageInterface {
+final class CertificatesPage implements AdminPageInterface {
 
-    public const SLUG = 'association-manager-issue-certificate';
+    public const SLUG = 'association-manager-certificates';
 
     public function __construct(
-        private readonly CertificateTemplateRepositoryInterface $templates
+        private readonly CertificateTemplateRepositoryInterface $templates,
+        private readonly CertificateService $service,
     ) {
     }
 
@@ -28,11 +30,11 @@ final class IssueCertificatePage implements AdminPageInterface {
     }
 
     public function pageTitle(): string {
-        return __( 'Issue Certificate', 'association-manager' );
+        return __( 'Certificates', 'association-manager' );
     }
 
     public function menuTitle(): string {
-        return __( 'Issue Certificate', 'association-manager' );
+        return __( 'Certificates', 'association-manager' );
     }
 
     public function capability(): string {
@@ -40,9 +42,10 @@ final class IssueCertificatePage implements AdminPageInterface {
     }
 
     public function render(): void {
-        $templates  = $this->templates->all();
-        $noticeType = isset( $_GET['am_notice'] ) ? sanitize_text_field( (string) $_GET['am_notice'] ) : null;
+        $templates    = $this->templates->all();
+        $certificates = $this->service->all();
+        $noticeType   = isset( $_GET['am_notice'] ) ? sanitize_text_field( (string) $_GET['am_notice'] ) : null;
 
-        require AM_PLUGIN_DIR . 'templates/admin/issue-certificate.php';
+        require AM_PLUGIN_DIR . 'templates/admin/certificates.php';
     }
 }
