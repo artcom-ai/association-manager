@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Core\Admin;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-interface AdminPageInterface
-{
+interface AdminPageInterface {
+
     public function slug(): string;
 
     /**

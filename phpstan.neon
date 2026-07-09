@@ -1,0 +1,11 @@
+parameters:
+    level: 8
+    paths:
+        - src
+        - database
+    scanFiles:
+        - phpstan-constants.php
+
+includes:
+    - phpstan-baseline.neon
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon

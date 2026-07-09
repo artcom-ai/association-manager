@@ -9,45 +9,42 @@ use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Payments\Domain\Payment;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class PaymentRepository implements PaymentRepositoryInterface
-{
-    public function find(int $id): ?Payment
-    {
+final class PaymentRepository implements PaymentRepositoryInterface {
+
+    public function find( int $id ): ?Payment {
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
+        $table = DatabaseManager::table( 'payments' );
 
         $row = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $id),
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ),
             ARRAY_A
         );
 
-        return $row ? $this->hydrate($row) : null;
+        return $row ? $this->hydrate( $row ) : null;
     }
 
     /**
      * @return Payment[]
      */
-    public function all(): array
-    {
+    public function all(): array {
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
+        $table = DatabaseManager::table( 'payments' );
 
-        $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A);
+        $rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A );
 
-        return array_map(fn (array $row): Payment => $this->hydrate($row), $rows ?: []);
+        return array_map( fn ( array $row ): Payment => $this->hydrate( $row ), $rows ?: [] );
     }
 
-    public function paginate(PaginationParams $params): PaginatedResult
-    {
+    public function paginate( PaginationParams $params ): PaginatedResult {
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
+        $table = DatabaseManager::table( 'payments' );
 
-        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
@@ -58,81 +55,80 @@ final class PaymentRepository implements PaymentRepositoryInterface
             ARRAY_A
         );
 
-        $payments = array_map(fn (array $row): Payment => $this->hydrate($row), $rows ?: []);
+        $payments = array_map( fn ( array $row ): Payment => $this->hydrate( $row ), $rows ?: [] );
 
-        return new PaginatedResult($payments, $total, $params->page, $params->perPage);
+        return new PaginatedResult( $payments, $total, $params->page, $params->perPage );
     }
 
     /**
      * @return Payment[]
      */
-    public function allForMember(int $memberId): array
-    {
+    public function allForMember( int $memberId ): array {
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
+        $table = DatabaseManager::table( 'payments' );
 
         $rows = $wpdb->get_results(
-            $wpdb->prepare("SELECT * FROM {$table} WHERE member_id = %d ORDER BY id DESC", $memberId),
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE member_id = %d ORDER BY id DESC", $memberId ),
             ARRAY_A
         );
 
-        return array_map(fn (array $row): Payment => $this->hydrate($row), $rows ?: []);
+        return array_map( fn ( array $row ): Payment => $this->hydrate( $row ), $rows ?: [] );
     }
 
-    public function insert(Payment $payment): int
-    {
+    public function insert( Payment $payment ): int {
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
-        $now = current_time('mysql');
+        $table = DatabaseManager::table( 'payments' );
+        $now   = current_time( 'mysql' );
 
         $wpdb->insert(
             $table,
             [
-                'member_id' => $payment->memberId,
+                'member_id'    => $payment->memberId,
                 'amount_cents' => $payment->amountCents,
-                'currency' => $payment->currency,
-                'status' => $payment->status,
-                'method' => $payment->method,
-                'reference' => $payment->reference,
-                'paid_at' => $payment->paidAt,
-                'created_at' => $now,
-                'updated_at' => $now,
+                'currency'     => $payment->currency,
+                'status'       => $payment->status,
+                'method'       => $payment->method,
+                'reference'    => $payment->reference,
+                'paid_at'      => $payment->paidAt,
+                'created_at'   => $now,
+                'updated_at'   => $now,
             ],
-            ['%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+            [ '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
         );
 
         return (int) $wpdb->insert_id;
     }
 
-    public function update(Payment $payment): void
-    {
-        if ($payment->id === null) {
-            throw new \InvalidArgumentException('Cannot update a payment without an id.');
+    public function update( Payment $payment ): void {
+        if ( $payment->id === null ) {
+            throw new \InvalidArgumentException( 'Cannot update a payment without an id.' );
         }
 
         global $wpdb;
 
-        $table = DatabaseManager::table('payments');
+        $table = DatabaseManager::table( 'payments' );
 
         $wpdb->update(
             $table,
             [
-                'status' => $payment->status,
-                'method' => $payment->method,
-                'reference' => $payment->reference,
-                'paid_at' => $payment->paidAt,
-                'updated_at' => current_time('mysql'),
+                'status'     => $payment->status,
+                'method'     => $payment->method,
+                'reference'  => $payment->reference,
+                'paid_at'    => $payment->paidAt,
+                'updated_at' => current_time( 'mysql' ),
             ],
-            ['id' => $payment->id],
-            ['%s', '%s', '%s', '%s', '%s'],
-            ['%d']
+            [ 'id' => $payment->id ],
+            [ '%s', '%s', '%s', '%s', '%s' ],
+            [ '%d' ]
         );
     }
 
-    private function hydrate(array $row): Payment
-    {
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function hydrate( array $row ): Payment {
         return new Payment(
             id: (int) $row['id'],
             memberId: (int) $row['member_id'],

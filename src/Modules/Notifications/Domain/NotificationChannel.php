@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class NotificationChannel
-{
+final class NotificationChannel {
+
     public const EMAIL = 'email';
 }

@@ -6,10 +6,9 @@ namespace AssociationManager\Core;
 
 use AssociationManager\Database\Migrator;
 
-final class Activator
-{
-    public static function activate(): void
-    {
+final class Activator {
+
+    public static function activate(): void {
         Migrator::installPending();
     }
 }

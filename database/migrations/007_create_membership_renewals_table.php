@@ -5,19 +5,17 @@ declare(strict_types=1);
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Database\MigrationInterface;
 
-return new class implements MigrationInterface {
-    public function id(): string
-    {
+return new class() implements MigrationInterface {
+    public function id(): string {
         return '007_create_membership_renewals_table';
     }
 
-    public function up(): void
-    {
+    public function up(): void {
         global $wpdb;
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $table = DatabaseManager::table('membership_renewals');
+        $table   = DatabaseManager::table( 'membership_renewals' );
         $charset = DatabaseManager::charsetCollate();
 
         $sql = "
@@ -34,6 +32,6 @@ return new class implements MigrationInterface {
             ) {$charset};
         ";
 
-        dbDelta($sql);
+        dbDelta( $sql );
     }
 };

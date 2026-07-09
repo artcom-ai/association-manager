@@ -12,10 +12,10 @@ use AssociationManager\Modules\Members\MembersModule;
 use AssociationManager\Modules\Notifications\NotificationsModule;
 use AssociationManager\Modules\Payments\PaymentsModule;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class Kernel
-{
+final class Kernel {
+
     private Container $container;
 
     /**
@@ -23,13 +23,11 @@ final class Kernel
      */
     private array $providers = [];
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->container = new Container();
     }
 
-    public function boot(): void
-    {
+    public function boot(): void {
         $this->registerProviders();
         $this->registerServices();
         $this->registerModules();
@@ -38,23 +36,20 @@ final class Kernel
         $this->registerHooks();
     }
 
-    private function registerProviders(): void
-    {
+    private function registerProviders(): void {
         $this->providers = [
             new CoreServiceProvider(),
         ];
     }
 
-    private function registerServices(): void
-    {
-        foreach ($this->providers as $provider) {
-            $provider->register($this->container);
+    private function registerServices(): void {
+        foreach ( $this->providers as $provider ) {
+            $provider->register( $this->container );
         }
     }
 
-    private function registerModules(): void
-    {
-        $moduleManager = $this->container->get(ModuleManager::class);
+    private function registerModules(): void {
+        $moduleManager = $this->container->get( ModuleManager::class );
 
         $modules = [
             // Directory depends on Members' MemberRepositoryInterface, so
@@ -69,37 +64,36 @@ final class Kernel
             new NotificationsModule(),
         ];
 
-        foreach ($modules as $module) {
-            $moduleManager->register($module);
+        foreach ( $modules as $module ) {
+            $moduleManager->register( $module );
         }
     }
 
-    private function bootProviders(): void
-    {
-        foreach ($this->providers as $provider) {
-            $provider->boot($this->container);
+    private function bootProviders(): void {
+        foreach ( $this->providers as $provider ) {
+            $provider->boot( $this->container );
         }
     }
 
-    private function bootModules(): void
-    {
-        $this->container->get(ModuleManager::class)->boot($this->container);
+    private function bootModules(): void {
+        $this->container->get( ModuleManager::class )->boot( $this->container );
     }
 
-    private function registerHooks(): void
-    {
-        add_action('init', function (): void {
-            do_action('association_manager_loaded');
-        });
+    private function registerHooks(): void {
+        add_action(
+            'init',
+            function (): void {
+				do_action( 'association_manager_loaded' );
+			}
+        );
 
         // Activation only runs Migrator::installPending() once at
         // activation time; this catches pending migrations shipped in a
         // code-only update to an already-active install (see ADR-005).
-        add_action('admin_init', [Migrator::class, 'installPending']);
+        add_action( 'admin_init', [ Migrator::class, 'installPending' ] );
     }
 
-    public function container(): Container
-    {
+    public function container(): Container {
         return $this->container;
     }
 }

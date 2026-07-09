@@ -9,10 +9,10 @@ use AssociationManager\Modules\Notifications\Domain\QueuedNotification;
 use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepositoryInterface;
 use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class NotificationDispatcher
-{
+final class NotificationDispatcher {
+
     public function __construct(
         private readonly NotificationTemplateRepositoryInterface $templates,
         private readonly NotificationQueueRepositoryInterface $queue,
@@ -37,13 +37,13 @@ final class NotificationDispatcher
         ?string $scheduledAt = null,
         string $channel = NotificationChannel::EMAIL
     ): void {
-        if ($recipientEmail === null || $recipientEmail === '') {
+        if ( $recipientEmail === null || $recipientEmail === '' ) {
             return;
         }
 
-        $template = $this->templates->find($eventKey, $channel);
+        $template = $this->templates->find( $eventKey, $channel );
 
-        if ($template === null) {
+        if ( $template === null ) {
             return;
         }
 
@@ -51,11 +51,11 @@ final class NotificationDispatcher
             eventKey: $eventKey,
             channel: $channel,
             recipient: $recipientEmail,
-            subject: $this->renderer->render($template->subject, $placeholders),
-            body: $this->renderer->render($template->body, $placeholders),
-            scheduledAt: $scheduledAt ?? current_time('mysql'),
+            subject: $this->renderer->render( $template->subject, $placeholders ),
+            body: $this->renderer->render( $template->body, $placeholders ),
+            scheduledAt: $scheduledAt ?? current_time( 'mysql' ),
         );
 
-        $this->queue->enqueue($notification);
+        $this->queue->enqueue( $notification );
     }
 }

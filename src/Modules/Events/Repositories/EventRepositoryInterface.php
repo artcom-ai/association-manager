@@ -8,11 +8,11 @@ use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Events\Domain\Event;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-interface EventRepositoryInterface
-{
-    public function find(int $id): ?Event;
+interface EventRepositoryInterface {
+
+    public function find( int $id ): ?Event;
 
     /**
      * @return Event[]
@@ -22,7 +22,7 @@ interface EventRepositoryInterface
     /**
      * @return PaginatedResult<Event>
      */
-    public function paginate(PaginationParams $params): PaginatedResult;
+    public function paginate( PaginationParams $params ): PaginatedResult;
 
     /**
      * Published events whose start time hasn't passed yet, soonest first.
@@ -34,9 +34,9 @@ interface EventRepositoryInterface
     /**
      * @return PaginatedResult<Event>
      */
-    public function paginateUpcomingPublished(PaginationParams $params): PaginatedResult;
+    public function paginateUpcomingPublished( PaginationParams $params ): PaginatedResult;
 
-    public function insert(Event $event): int;
+    public function insert( Event $event ): int;
 
-    public function update(Event $event): void;
+    public function update( Event $event ): void;
 }

@@ -6,11 +6,11 @@ namespace AssociationManager\Modules\Notifications\Repositories;
 
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-interface NotificationTemplateRepositoryInterface
-{
-    public function find(string $eventKey, string $channel): ?NotificationTemplate;
+interface NotificationTemplateRepositoryInterface {
+
+    public function find( string $eventKey, string $channel ): ?NotificationTemplate;
 
     /**
      * @return NotificationTemplate[]
@@ -20,5 +20,5 @@ interface NotificationTemplateRepositoryInterface
     /**
      * Upsert keyed by (event_key, channel).
      */
-    public function save(NotificationTemplate $template): void;
+    public function save( NotificationTemplate $template ): void;
 }

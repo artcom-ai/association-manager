@@ -8,11 +8,11 @@ use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Payments\Domain\Payment;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-interface PaymentRepositoryInterface
-{
-    public function find(int $id): ?Payment;
+interface PaymentRepositoryInterface {
+
+    public function find( int $id ): ?Payment;
 
     /**
      * @return Payment[]
@@ -22,14 +22,14 @@ interface PaymentRepositoryInterface
     /**
      * @return PaginatedResult<Payment>
      */
-    public function paginate(PaginationParams $params): PaginatedResult;
+    public function paginate( PaginationParams $params ): PaginatedResult;
 
     /**
      * @return Payment[]
      */
-    public function allForMember(int $memberId): array;
+    public function allForMember( int $memberId ): array;
 
-    public function insert(Payment $payment): int;
+    public function insert( Payment $payment ): int;
 
-    public function update(Payment $payment): void;
+    public function update( Payment $payment ): void;
 }

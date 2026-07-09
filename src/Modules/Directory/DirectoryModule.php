@@ -15,47 +15,46 @@ use AssociationManager\Modules\Directory\Rest\DirectoryController;
 use AssociationManager\Modules\Directory\Services\DirectoryService;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class DirectoryModule implements ModuleInterface
-{
+final class DirectoryModule implements ModuleInterface {
+
     private const LEAFLET_VERSION = '1.9.4';
 
-    public function name(): string
-    {
+    public function name(): string {
         return 'directory';
     }
 
-    public function register(Container $container): void
-    {
+    public function register( Container $container ): void {
         $container->set(
             DirectoryService::class,
             new DirectoryService(
-                $container->get(MemberRepositoryInterface::class),
-                $container->get(FieldRegistry::class),
-                $container->get(FieldValueService::class),
+                $container->get( MemberRepositoryInterface::class ),
+                $container->get( FieldRegistry::class ),
+                $container->get( FieldValueService::class ),
             )
         );
     }
 
-    public function boot(Container $container): void
-    {
-        $service = $container->get(DirectoryService::class);
+    public function boot( Container $container ): void {
+        $service = $container->get( DirectoryService::class );
 
-        (new DirectoryShortcode($service))->register();
-        (new PrivateDirectoryShortcode($service))->register();
-        (new DirectoryMapShortcode($service))->register();
+        ( new DirectoryShortcode( $service ) )->register();
+        ( new PrivateDirectoryShortcode( $service ) )->register();
+        ( new DirectoryMapShortcode( $service ) )->register();
 
-        add_action('rest_api_init', function () use ($service): void {
-            (new DirectoryController($service))->registerRoutes();
-        });
+        add_action(
+            'rest_api_init',
+            function () use ( $service ): void {
+				( new DirectoryController( $service ) )->registerRoutes();
+			}
+        );
 
-        add_action('wp_enqueue_scripts', [$this, 'maybeEnqueueMapAssets']);
+        add_action( 'wp_enqueue_scripts', [ $this, 'maybeEnqueueMapAssets' ] );
     }
 
-    public function maybeEnqueueMapAssets(): void
-    {
-        if (!is_singular() || !has_shortcode(get_post()->post_content ?? '', DirectoryMapShortcode::TAG)) {
+    public function maybeEnqueueMapAssets(): void {
+        if ( ! is_singular() || ! has_shortcode( get_post()->post_content ?? '', DirectoryMapShortcode::TAG ) ) {
             return;
         }
 
@@ -77,7 +76,7 @@ final class DirectoryModule implements ModuleInterface
         wp_enqueue_script(
             'association-manager-directory-map',
             AM_PLUGIN_URL . 'assets/js/directory-map.js',
-            ['association-manager-leaflet'],
+            [ 'association-manager-leaflet' ],
             AM_PLUGIN_VERSION,
             true
         );

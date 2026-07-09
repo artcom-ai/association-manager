@@ -5,19 +5,17 @@ declare(strict_types=1);
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Database\MigrationInterface;
 
-return new class implements MigrationInterface {
-    public function id(): string
-    {
+return new class() implements MigrationInterface {
+    public function id(): string {
         return '004_extend_members_table';
     }
 
-    public function up(): void
-    {
+    public function up(): void {
         global $wpdb;
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $table = DatabaseManager::table('members');
+        $table   = DatabaseManager::table( 'members' );
         $charset = DatabaseManager::charsetCollate();
 
         $sql = "
@@ -41,13 +39,12 @@ return new class implements MigrationInterface {
             ) {$charset};
         ";
 
-        dbDelta($sql);
+        dbDelta( $sql );
 
-        $this->backfillUuids($table);
+        $this->backfillUuids( $table );
     }
 
-    private function backfillUuids(string $table): void
-    {
+    private function backfillUuids( string $table ): void {
         global $wpdb;
 
         $rows = $wpdb->get_results(
@@ -55,13 +52,13 @@ return new class implements MigrationInterface {
             ARRAY_A
         );
 
-        foreach ($rows ?: [] as $row) {
+        foreach ( $rows ?: [] as $row ) {
             $wpdb->update(
                 $table,
-                ['uuid' => wp_generate_uuid4()],
-                ['id' => (int) $row['id']],
-                ['%s'],
-                ['%d']
+                [ 'uuid' => wp_generate_uuid4() ],
+                [ 'id' => (int) $row['id'] ],
+                [ '%s' ],
+                [ '%d' ]
             );
         }
     }

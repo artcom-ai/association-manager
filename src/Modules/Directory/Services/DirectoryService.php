@@ -14,10 +14,10 @@ use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class DirectoryService
-{
+final class DirectoryService {
+
     private const ENTITY_TYPE = 'member';
 
     public function __construct(
@@ -34,9 +34,8 @@ final class DirectoryService
      *
      * @return PaginatedResult<array<string, mixed>>
      */
-    public function paginate(PaginationParams $params, ?string $search = null): PaginatedResult
-    {
-        return $this->paginateFor(FieldDefinition::VISIBILITY_PUBLIC, $params, $search);
+    public function paginate( PaginationParams $params, ?string $search = null ): PaginatedResult {
+        return $this->paginateFor( FieldDefinition::VISIBILITY_PUBLIC, $params, $search );
     }
 
     /**
@@ -46,20 +45,20 @@ final class DirectoryService
      *
      * @return PaginatedResult<array<string, mixed>>
      */
-    public function paginatePrivate(PaginationParams $params, ?string $search = null): PaginatedResult
-    {
-        return $this->paginateFor(FieldDefinition::VISIBILITY_PRIVATE, $params, $search);
+    public function paginatePrivate( PaginationParams $params, ?string $search = null ): PaginatedResult {
+        return $this->paginateFor( FieldDefinition::VISIBILITY_PRIVATE, $params, $search );
     }
 
     /**
      * @return FieldDefinition[]
      */
-    public function visibleCustomFields(string $viewerLevel): array
-    {
-        return array_values(array_filter(
-            $this->fieldRegistry->forEntityType(self::ENTITY_TYPE),
-            static fn (FieldDefinition $field): bool => $field->isVisibleTo($viewerLevel)
-        ));
+    public function visibleCustomFields( string $viewerLevel ): array {
+        return array_values(
+            array_filter(
+                $this->fieldRegistry->forEntityType( self::ENTITY_TYPE ),
+                static fn ( FieldDefinition $field ): bool => $field->isVisibleTo( $viewerLevel )
+            )
+        );
     }
 
     /**
@@ -70,43 +69,42 @@ final class DirectoryService
      *
      * @return array<int, array{label: string, lat: float, lng: float}>
      */
-    public function mapPoints(): array
-    {
+    public function mapPoints(): array {
         $locationField = $this->findLocationField();
 
-        if ($locationField === null) {
+        if ( $locationField === null ) {
             return [];
         }
 
         $points = [];
-        $page = 1;
+        $page   = 1;
 
         do {
             $result = $this->members->search(
-                new MemberSearchCriteria(status: MemberStatus::ACTIVE),
-                new PaginationParams($page, 100)
+                new MemberSearchCriteria( status: MemberStatus::ACTIVE ),
+                new PaginationParams( $page, 100 )
             );
 
-            foreach ($result->items as $member) {
-                $value = $this->fieldValueService->valuesFor(self::ENTITY_TYPE, $member->id)[$locationField->key] ?? null;
+            foreach ( $result->items as $member ) {
+                $value = $this->fieldValueService->valuesFor( self::ENTITY_TYPE, $member->requireId() )[ $locationField->key ] ?? null;
 
-                if ($value === null) {
+                if ( $value === null ) {
                     continue;
                 }
 
-                if (!preg_match('/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/', $value, $matches)) {
+                if ( ! preg_match( '/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/', $value, $matches ) ) {
                     continue;
                 }
 
                 $points[] = [
                     'label' => $member->memberNumber ?? '',
-                    'lat' => (float) $matches[1],
-                    'lng' => (float) $matches[2],
+                    'lat'   => (float) $matches[1],
+                    'lng'   => (float) $matches[2],
                 ];
             }
 
-            $page++;
-        } while ($page <= $result->totalPages());
+            ++$page;
+        } while ( $page <= $result->totalPages() );
 
         return $points;
     }
@@ -114,48 +112,45 @@ final class DirectoryService
     /**
      * @return PaginatedResult<array<string, mixed>>
      */
-    private function paginateFor(string $viewerLevel, PaginationParams $params, ?string $search): PaginatedResult
-    {
-        $criteria = new MemberSearchCriteria(status: MemberStatus::ACTIVE, search: $search);
-        $result = $this->members->search($criteria, $params);
+    private function paginateFor( string $viewerLevel, PaginationParams $params, ?string $search ): PaginatedResult {
+        $criteria = new MemberSearchCriteria( status: MemberStatus::ACTIVE, search: $search );
+        $result   = $this->members->search( $criteria, $params );
 
         $entries = array_map(
-            fn (Member $member): array => $this->buildEntry($member, $viewerLevel),
+            fn ( Member $member ): array => $this->buildEntry( $member, $viewerLevel ),
             $result->items
         );
 
-        return new PaginatedResult($entries, $result->total, $result->page, $result->perPage);
+        return new PaginatedResult( $entries, $result->total, $result->page, $result->perPage );
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function buildEntry(Member $member, string $viewerLevel): array
-    {
+    private function buildEntry( Member $member, string $viewerLevel ): array {
         $entry = [
-            'member_number' => $member->memberNumber,
+            'member_number'   => $member->memberNumber,
             'membership_type' => $member->membershipType,
-            'joined_at' => $member->joinedAt,
+            'joined_at'       => $member->joinedAt,
         ];
 
-        if ($viewerLevel !== FieldDefinition::VISIBILITY_PUBLIC) {
-            $entry['status'] = $member->status;
+        if ( $viewerLevel !== FieldDefinition::VISIBILITY_PUBLIC ) {
+            $entry['status']     = $member->status;
             $entry['expires_at'] = $member->expiresAt;
         }
 
-        $customValues = $this->fieldValueService->valuesFor(self::ENTITY_TYPE, $member->id);
+        $customValues = $this->fieldValueService->valuesFor( self::ENTITY_TYPE, $member->requireId() );
 
-        foreach ($this->visibleCustomFields($viewerLevel) as $field) {
-            $entry[$field->key] = $customValues[$field->key] ?? null;
+        foreach ( $this->visibleCustomFields( $viewerLevel ) as $field ) {
+            $entry[ $field->key ] = $customValues[ $field->key ] ?? null;
         }
 
         return $entry;
     }
 
-    private function findLocationField(): ?FieldDefinition
-    {
-        foreach ($this->fieldRegistry->forEntityType(self::ENTITY_TYPE) as $field) {
-            if ($field->type === FieldDefinition::TYPE_LOCATION) {
+    private function findLocationField(): ?FieldDefinition {
+        foreach ( $this->fieldRegistry->forEntityType( self::ENTITY_TYPE ) as $field ) {
+            if ( $field->type === FieldDefinition::TYPE_LOCATION ) {
                 return $field;
             }
         }

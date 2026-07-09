@@ -14,35 +14,35 @@ use AssociationManager\Modules\Events\Repositories\EventRepositoryInterface;
 use AssociationManager\Modules\Events\Rest\EventsController;
 use AssociationManager\Modules\Events\Services\EventService;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class EventsModule implements ModuleInterface
-{
-    public function name(): string
-    {
+final class EventsModule implements ModuleInterface {
+
+    public function name(): string {
         return 'events';
     }
 
-    public function register(Container $container): void
-    {
-        $container->set(EventRepositoryInterface::class, new EventRepository());
+    public function register( Container $container ): void {
+        $container->set( EventRepositoryInterface::class, new EventRepository() );
 
         $container->set(
             EventService::class,
-            new EventService($container->get(EventRepositoryInterface::class))
+            new EventService( $container->get( EventRepositoryInterface::class ) )
         );
     }
 
-    public function boot(Container $container): void
-    {
-        $service = $container->get(EventService::class);
+    public function boot( Container $container ): void {
+        $service = $container->get( EventService::class );
 
-        $container->get(AdminMenu::class)->register(new EventsPage($service));
+        $container->get( AdminMenu::class )->register( new EventsPage( $service ) );
 
-        (new EventsShortcode($service))->register();
+        ( new EventsShortcode( $service ) )->register();
 
-        add_action('rest_api_init', function () use ($service): void {
-            (new EventsController($service))->registerRoutes();
-        });
+        add_action(
+            'rest_api_init',
+            function () use ( $service ): void {
+				( new EventsController( $service ) )->registerRoutes();
+			}
+        );
     }
 }

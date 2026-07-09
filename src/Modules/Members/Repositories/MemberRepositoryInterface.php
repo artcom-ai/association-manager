@@ -9,13 +9,13 @@ use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-interface MemberRepositoryInterface
-{
-    public function find(int $id): ?Member;
+interface MemberRepositoryInterface {
 
-    public function findByMemberNumber(string $memberNumber): ?Member;
+    public function find( int $id ): ?Member;
+
+    public function findByMemberNumber( string $memberNumber ): ?Member;
 
     /**
      * @return Member[]
@@ -25,12 +25,12 @@ interface MemberRepositoryInterface
     /**
      * @return PaginatedResult<Member>
      */
-    public function paginate(PaginationParams $params): PaginatedResult;
+    public function paginate( PaginationParams $params ): PaginatedResult;
 
     /**
      * @return PaginatedResult<Member>
      */
-    public function search(MemberSearchCriteria $criteria, PaginationParams $params): PaginatedResult;
+    public function search( MemberSearchCriteria $criteria, PaginationParams $params ): PaginatedResult;
 
     /**
      * Coarse candidates for automatic expiry: active members whose
@@ -38,9 +38,9 @@ interface MemberRepositoryInterface
      *
      * @return Member[]
      */
-    public function findExpiredCandidates(string $now): array;
+    public function findExpiredCandidates( string $now ): array;
 
-    public function insert(Member $member): int;
+    public function insert( Member $member ): int;
 
-    public function update(Member $member): void;
+    public function update( Member $member ): void;
 }

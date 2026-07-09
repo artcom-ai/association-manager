@@ -7,15 +7,14 @@ namespace AssociationManager\Modules\Notifications\Repositories;
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class NotificationTemplateRepository implements NotificationTemplateRepositoryInterface
-{
-    public function find(string $eventKey, string $channel): ?NotificationTemplate
-    {
+final class NotificationTemplateRepository implements NotificationTemplateRepositoryInterface {
+
+    public function find( string $eventKey, string $channel ): ?NotificationTemplate {
         global $wpdb;
 
-        $table = DatabaseManager::table('notification_templates');
+        $table = DatabaseManager::table( 'notification_templates' );
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
@@ -26,43 +25,41 @@ final class NotificationTemplateRepository implements NotificationTemplateReposi
             ARRAY_A
         );
 
-        return $row ? $this->hydrate($row) : null;
+        return $row ? $this->hydrate( $row ) : null;
     }
 
     /**
      * @return NotificationTemplate[]
      */
-    public function all(): array
-    {
+    public function all(): array {
         global $wpdb;
 
-        $table = DatabaseManager::table('notification_templates');
+        $table = DatabaseManager::table( 'notification_templates' );
 
-        $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY event_key ASC", ARRAY_A);
+        $rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY event_key ASC", ARRAY_A );
 
-        return array_map(fn (array $row): NotificationTemplate => $this->hydrate($row), $rows ?: []);
+        return array_map( fn ( array $row ): NotificationTemplate => $this->hydrate( $row ), $rows ?: [] );
     }
 
-    public function save(NotificationTemplate $template): void
-    {
+    public function save( NotificationTemplate $template ): void {
         global $wpdb;
 
-        $table = DatabaseManager::table('notification_templates');
-        $now = current_time('mysql');
+        $table = DatabaseManager::table( 'notification_templates' );
+        $now   = current_time( 'mysql' );
 
-        $existing = $this->find($template->eventKey, $template->channel);
+        $existing = $this->find( $template->eventKey, $template->channel );
 
-        if ($existing === null) {
+        if ( $existing === null ) {
             $wpdb->insert(
                 $table,
                 [
-                    'event_key' => $template->eventKey,
-                    'channel' => $template->channel,
-                    'subject' => $template->subject,
-                    'body' => $template->body,
+                    'event_key'  => $template->eventKey,
+                    'channel'    => $template->channel,
+                    'subject'    => $template->subject,
+                    'body'       => $template->body,
                     'updated_at' => $now,
                 ],
-                ['%s', '%s', '%s', '%s', '%s']
+                [ '%s', '%s', '%s', '%s', '%s' ]
             );
 
             return;
@@ -71,18 +68,20 @@ final class NotificationTemplateRepository implements NotificationTemplateReposi
         $wpdb->update(
             $table,
             [
-                'subject' => $template->subject,
-                'body' => $template->body,
+                'subject'    => $template->subject,
+                'body'       => $template->body,
                 'updated_at' => $now,
             ],
-            ['id' => $existing->id],
-            ['%s', '%s', '%s'],
-            ['%d']
+            [ 'id' => $existing->id ],
+            [ '%s', '%s', '%s' ],
+            [ '%d' ]
         );
     }
 
-    private function hydrate(array $row): NotificationTemplate
-    {
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function hydrate( array $row ): NotificationTemplate {
         return new NotificationTemplate(
             id: (int) $row['id'],
             eventKey: $row['event_key'],

@@ -5,19 +5,17 @@ declare(strict_types=1);
 use AssociationManager\Database\DatabaseManager;
 use AssociationManager\Database\MigrationInterface;
 
-return new class implements MigrationInterface {
-    public function id(): string
-    {
+return new class() implements MigrationInterface {
+    public function id(): string {
         return '010_create_notification_queue_table';
     }
 
-    public function up(): void
-    {
+    public function up(): void {
         global $wpdb;
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $table = DatabaseManager::table('notification_queue');
+        $table   = DatabaseManager::table( 'notification_queue' );
         $charset = DatabaseManager::charsetCollate();
 
         $sql = "
@@ -39,6 +37,6 @@ return new class implements MigrationInterface {
             ) {$charset};
         ";
 
-        dbDelta($sql);
+        dbDelta( $sql );
     }
 };

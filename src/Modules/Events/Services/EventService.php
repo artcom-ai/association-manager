@@ -9,10 +9,10 @@ use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Events\Domain\Event;
 use AssociationManager\Modules\Events\Repositories\EventRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class EventService
-{
+final class EventService {
+
     public function __construct(
         private readonly EventRepositoryInterface $repository
     ) {
@@ -27,73 +27,65 @@ final class EventService
         ?int $capacity
     ): Event {
         $id = $this->repository->insert(
-            Event::draft($title, $description, $location, $startsAt, $endsAt, $capacity)
+            Event::draft( $title, $description, $location, $startsAt, $endsAt, $capacity )
         );
 
-        return $this->mustFind($id);
+        return $this->mustFind( $id );
     }
 
-    public function publish(int $eventId): Event
-    {
-        $published = $this->mustFind($eventId)->publish();
+    public function publish( int $eventId ): Event {
+        $published = $this->mustFind( $eventId )->publish();
 
-        $this->repository->update($published);
+        $this->repository->update( $published );
 
         return $published;
     }
 
-    public function cancel(int $eventId): Event
-    {
-        $cancelled = $this->mustFind($eventId)->cancel();
+    public function cancel( int $eventId ): Event {
+        $cancelled = $this->mustFind( $eventId )->cancel();
 
-        $this->repository->update($cancelled);
+        $this->repository->update( $cancelled );
 
         return $cancelled;
     }
 
-    public function find(int $id): ?Event
-    {
-        return $this->repository->find($id);
+    public function find( int $id ): ?Event {
+        return $this->repository->find( $id );
     }
 
     /**
      * @return Event[]
      */
-    public function all(): array
-    {
+    public function all(): array {
         return $this->repository->all();
     }
 
     /**
      * @return Event[]
      */
-    public function upcomingPublished(): array
-    {
+    public function upcomingPublished(): array {
         return $this->repository->upcomingPublished();
     }
 
     /**
      * @return PaginatedResult<Event>
      */
-    public function paginate(PaginationParams $params): PaginatedResult
-    {
-        return $this->repository->paginate($params);
+    public function paginate( PaginationParams $params ): PaginatedResult {
+        return $this->repository->paginate( $params );
     }
 
     /**
      * @return PaginatedResult<Event>
      */
-    public function paginateUpcomingPublished(PaginationParams $params): PaginatedResult
-    {
-        return $this->repository->paginateUpcomingPublished($params);
+    public function paginateUpcomingPublished( PaginationParams $params ): PaginatedResult {
+        return $this->repository->paginateUpcomingPublished( $params );
     }
 
-    private function mustFind(int $id): Event
-    {
-        $event = $this->repository->find($id);
+    private function mustFind( int $id ): Event {
+        $event = $this->repository->find( $id );
 
-        if ($event === null) {
-            throw new \RuntimeException("Event not found: {$id}");
+        if ( $event === null ) {
+            throw new \RuntimeException( "Event not found: {$id}" );
         }
 
         return $event;

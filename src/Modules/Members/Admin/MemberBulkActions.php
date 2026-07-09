@@ -6,10 +6,10 @@ namespace AssociationManager\Modules\Members\Admin;
 
 use AssociationManager\Modules\Members\Services\MemberService;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class MemberBulkActions
-{
+final class MemberBulkActions {
+
     public function __construct(
         private readonly MemberService $service
     ) {
@@ -19,26 +19,28 @@ final class MemberBulkActions
      * @param int[] $memberIds
      * @return array{succeeded: int[], failed: array<int, string>}
      */
-    public function apply(string $action, array $memberIds, ?int $changedBy): array
-    {
+    public function apply( string $action, array $memberIds, ?int $changedBy ): array {
         $succeeded = [];
-        $failed = [];
+        $failed    = [];
 
-        foreach ($memberIds as $id) {
+        foreach ( $memberIds as $id ) {
             try {
-                match ($action) {
-                    'activate' => $this->service->activateMember($id, $changedBy),
-                    'suspend' => $this->service->suspendMember($id, $changedBy),
-                    'archive' => $this->service->archiveMember($id, $changedBy),
-                    default => throw new \InvalidArgumentException("Unknown bulk action \"{$action}\"."),
+                match ( $action ) {
+                    'activate' => $this->service->activateMember( $id, $changedBy ),
+                    'suspend' => $this->service->suspendMember( $id, $changedBy ),
+                    'archive' => $this->service->archiveMember( $id, $changedBy ),
+                    default => throw new \InvalidArgumentException( "Unknown bulk action \"{$action}\"." ),
                 };
 
                 $succeeded[] = $id;
-            } catch (\Throwable $e) {
-                $failed[$id] = $e->getMessage();
+            } catch ( \Throwable $e ) {
+                $failed[ $id ] = $e->getMessage();
             }
         }
 
-        return ['succeeded' => $succeeded, 'failed' => $failed];
+        return [
+			'succeeded' => $succeeded,
+			'failed'    => $failed,
+		];
     }
 }

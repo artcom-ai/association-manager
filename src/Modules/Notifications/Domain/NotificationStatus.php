@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class NotificationStatus
-{
+final class NotificationStatus {
+
     public const PENDING = 'pending';
-    public const SENT = 'sent';
-    public const FAILED = 'failed';
+    public const SENT    = 'sent';
+    public const FAILED  = 'failed';
 }

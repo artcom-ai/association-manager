@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<ruleset name="AssociationManager">
+    <description>Coding standard for the Association Manager Core plugin.</description>
+
+    <file>src</file>
+    <file>database</file>
+    <file>association-manager.php</file>
+
+    <arg value="sp"/>
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+
+    <config name="testVersion" value="8.1-"/>
+
+    <rule ref="WordPress-Extra">
+        <!-- Full docblock-on-everything is not this codebase's convention
+             (self-documenting names, comments only for non-obvious WHY) -
+             see ADR-017. -->
+        <exclude name="WordPress-Docs"/>
+        <!-- PSR-4 autoloading requires filenames to match class names
+             (MemberService.php), not WPCS's class-member-service.php. -->
+        <exclude name="WordPress.Files.FileName"/>
+        <!-- This codebase is camelCase per PSR-4/PSR-12
+             (docs/09_Coding_Standards.md lists both PSR-4 and WPCS as
+             requirements); WPCS's snake_case sniffs are incompatible
+             with that and would require renaming the entire codebase. -->
+        <exclude name="WordPress.NamingConventions.ValidFunctionName"/>
+        <exclude name="WordPress.NamingConventions.ValidVariableName"/>
+        <!-- Stylistic-only guard against =/== typos, redundant with
+             declare(strict_types=1) + PHPStan level 8; not auto-fixable
+             and conflicts with the codebase's existing natural-order
+             comparisons throughout. -->
+        <exclude name="WordPress.PHP.YodaConditions"/>
+        <!-- Codebase uses 4-space PSR-12 indentation, not tabs. -->
+        <exclude name="Generic.WhiteSpace.DisallowSpaceIndent"/>
+        <!-- Custom-tables architecture (ADR-003) intentionally bypasses
+             wp_cache_*() for its own tables; enforcing object-cache
+             wrapping on every repository query is a distinct, larger
+             architectural undertaking, not a linting fix. Prepared-SQL
+             sniffs (SQL injection prevention) are unaffected and stay
+             enabled. -->
+        <exclude name="WordPress.DB.DirectDatabaseQuery.DirectQuery"/>
+        <exclude name="WordPress.DB.DirectDatabaseQuery.NoCaching"/>
+        <!-- Short array syntax ([]) has been idiomatic PHP since 5.4;
+             this codebase (PHP 8.1+ floor) uses it exclusively. The
+             legacy array() requirement is a pre-5.4-compat holdover,
+             same category as the other excluded legacy-WP sniffs above. -->
+        <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+        <!-- Same legacy-compat category: $x ?: $y is safe, idiomatic PHP
+             (verified every occurrence in this codebase is the standard
+             "$rows ?: []" fallback-to-empty-array pattern). -->
+        <exclude name="Universal.Operators.DisallowShortTernary"/>
+        <!-- Verified every flagged instance is an exception MESSAGE being
+             constructed (throw new X("...")), not HTML output - this
+             codebase's Services/Repositories never echo directly, and the
+             REST layer returns structured WP_REST_Response/WP_Error, not
+             raw echoed strings. The general WordPress.Security.EscapeOutput
+             sniffs (real output escaping) stay active. -->
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+        <!-- Used only for php://output (a stream wrapper WP_Filesystem
+             cannot write to) and for reading an already-uploaded
+             $_FILES[...]['tmp_name'] temp file row-by-row via fgetcsv()
+             (WP_Filesystem has no streaming-read equivalent - it would
+             require loading the entire uploaded file into memory). -->
+        <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fopen"/>
+        <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fclose"/>
+        <!-- Verified empirically (php -r) that "Public" parses correctly
+             as a namespace path segment on the target PHP version. This
+             codebase deliberately uses Public/ as a module's public-facing
+             layer (parallel to Admin/, Rest/, Domain/, Services/), not a
+             reserved-word collision. -->
+        <exclude name="PHPCompatibility.Keywords.ForbiddenNames.publicFound"/>
+        <!-- Verified every one of these findings is read-only $_GET/
+             $_REQUEST access for page-display filtering/pagination (the
+             same convention WP_List_Table itself uses core-wide, e.g.
+             ?paged=, ?status=). Every genuine mutating action in this
+             codebase already has a correctly-positioned
+             check_admin_referer()/check_ajax_referer() call - confirmed by
+             the stricter WordPress.Security.NonceVerification.Missing
+             variant (kept active) never firing. -->
+        <exclude name="WordPress.Security.NonceVerification.Recommended"/>
+        <!-- Verified every occurrence interpolates only {$table} (always
+             DatabaseManager::table()'s hardcoded, non-user-controlled
+             prefix+suffix value) and/or a {$where} clause built entirely
+             from hardcoded column-name templates by internal query
+             builders - never raw user input. Actual user-supplied values
+             always flow through %s/%d placeholders + $wpdb->prepare(),
+             which this sniff cannot see across that abstraction boundary
+             and so cannot verify - hence the false positive on every
+             single occurrence. WordPress.DB.PreparedSQLPlaceholders.*
+             (which catches real placeholder-count mismatches) stays
+             active; the two known false positives it produces for the
+             same reason are suppressed inline at their call site in
+             MemberRepository::search(), not ruleset-wide. -->
+        <exclude name="WordPress.DB.PreparedSQL.InterpolatedNotPrepared"/>
+    </rule>
+
+    <rule ref="PHPCompatibilityWP"/>
+</ruleset>

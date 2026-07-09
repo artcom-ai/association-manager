@@ -6,10 +6,10 @@ namespace AssociationManager\Modules\Members\Repositories;
 
 use AssociationManager\Database\DatabaseManager;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class MembershipRenewalRepository implements MembershipRenewalRepositoryInterface
-{
+final class MembershipRenewalRepository implements MembershipRenewalRepositoryInterface {
+
     public function record(
         int $memberId,
         ?string $planKey,
@@ -19,30 +19,29 @@ final class MembershipRenewalRepository implements MembershipRenewalRepositoryIn
     ): void {
         global $wpdb;
 
-        $table = DatabaseManager::table('membership_renewals');
+        $table = DatabaseManager::table( 'membership_renewals' );
 
         $wpdb->insert(
             $table,
             [
-                'member_id' => $memberId,
-                'plan_key' => $planKey,
+                'member_id'           => $memberId,
+                'plan_key'            => $planKey,
                 'previous_expires_at' => $previousExpiresAt,
-                'new_expires_at' => $newExpiresAt,
-                'renewed_by' => $renewedBy,
-                'renewed_at' => current_time('mysql'),
+                'new_expires_at'      => $newExpiresAt,
+                'renewed_by'          => $renewedBy,
+                'renewed_at'          => current_time( 'mysql' ),
             ],
-            ['%d', '%s', '%s', '%s', '%d', '%s']
+            [ '%d', '%s', '%s', '%s', '%d', '%s' ]
         );
     }
 
     /**
      * @return array<int, array{plan_key: ?string, previous_expires_at: ?string, new_expires_at: string, renewed_by: ?int, renewed_at: string}>
      */
-    public function forMember(int $memberId): array
-    {
+    public function forMember( int $memberId ): array {
         global $wpdb;
 
-        $table = DatabaseManager::table('membership_renewals');
+        $table = DatabaseManager::table( 'membership_renewals' );
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
@@ -53,12 +52,12 @@ final class MembershipRenewalRepository implements MembershipRenewalRepositoryIn
         );
 
         return array_map(
-            static fn (array $row): array => [
-                'plan_key' => $row['plan_key'],
+            static fn ( array $row ): array => [
+                'plan_key'            => $row['plan_key'],
                 'previous_expires_at' => $row['previous_expires_at'],
-                'new_expires_at' => $row['new_expires_at'],
-                'renewed_by' => $row['renewed_by'] !== null ? (int) $row['renewed_by'] : null,
-                'renewed_at' => $row['renewed_at'],
+                'new_expires_at'      => $row['new_expires_at'],
+                'renewed_by'          => $row['renewed_by'] !== null ? (int) $row['renewed_by'] : null,
+                'renewed_at'          => $row['renewed_at'],
             ],
             $rows ?: []
         );

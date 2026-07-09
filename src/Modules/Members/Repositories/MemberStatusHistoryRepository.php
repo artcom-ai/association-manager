@@ -6,10 +6,10 @@ namespace AssociationManager\Modules\Members\Repositories;
 
 use AssociationManager\Database\DatabaseManager;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class MemberStatusHistoryRepository implements MemberStatusHistoryRepositoryInterface
-{
+final class MemberStatusHistoryRepository implements MemberStatusHistoryRepositoryInterface {
+
     public function record(
         int $memberId,
         ?string $fromStatus,
@@ -19,30 +19,29 @@ final class MemberStatusHistoryRepository implements MemberStatusHistoryReposito
     ): void {
         global $wpdb;
 
-        $table = DatabaseManager::table('member_status_history');
+        $table = DatabaseManager::table( 'member_status_history' );
 
         $wpdb->insert(
             $table,
             [
-                'member_id' => $memberId,
+                'member_id'   => $memberId,
                 'from_status' => $fromStatus,
-                'to_status' => $toStatus,
-                'changed_by' => $changedBy,
-                'reason' => $reason,
-                'changed_at' => current_time('mysql'),
+                'to_status'   => $toStatus,
+                'changed_by'  => $changedBy,
+                'reason'      => $reason,
+                'changed_at'  => current_time( 'mysql' ),
             ],
-            ['%d', '%s', '%s', '%d', '%s', '%s']
+            [ '%d', '%s', '%s', '%d', '%s', '%s' ]
         );
     }
 
     /**
      * @return array<int, array{from_status: ?string, to_status: string, changed_by: ?int, reason: ?string, changed_at: string}>
      */
-    public function forMember(int $memberId): array
-    {
+    public function forMember( int $memberId ): array {
         global $wpdb;
 
-        $table = DatabaseManager::table('member_status_history');
+        $table = DatabaseManager::table( 'member_status_history' );
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
@@ -53,12 +52,12 @@ final class MemberStatusHistoryRepository implements MemberStatusHistoryReposito
         );
 
         return array_map(
-            static fn (array $row): array => [
+            static fn ( array $row ): array => [
                 'from_status' => $row['from_status'],
-                'to_status' => $row['to_status'],
-                'changed_by' => $row['changed_by'] !== null ? (int) $row['changed_by'] : null,
-                'reason' => $row['reason'],
-                'changed_at' => $row['changed_at'],
+                'to_status'   => $row['to_status'],
+                'changed_by'  => $row['changed_by'] !== null ? (int) $row['changed_by'] : null,
+                'reason'      => $row['reason'],
+                'changed_at'  => $row['changed_at'],
             ],
             $rows ?: []
         );

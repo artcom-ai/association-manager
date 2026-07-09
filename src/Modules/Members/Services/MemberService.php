@@ -15,10 +15,10 @@ use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 use AssociationManager\Modules\Members\Repositories\MemberStatusHistoryRepositoryInterface;
 use AssociationManager\Modules\Members\Repositories\MembershipRenewalRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class MemberService
-{
+final class MemberService {
+
     public function __construct(
         private readonly MemberRepositoryInterface $repository,
         private readonly MemberStatusHistoryRepositoryInterface $history,
@@ -28,37 +28,32 @@ final class MemberService
     ) {
     }
 
-    public function createMember(?int $wpUserId, ?string $membershipType, ?string $email = null): Member
-    {
-        $id = $this->repository->insert(Member::draft($wpUserId, $membershipType, $email));
+    public function createMember( ?int $wpUserId, ?string $membershipType, ?string $email = null ): Member {
+        $id = $this->repository->insert( Member::draft( $wpUserId, $membershipType, $email ) );
 
-        $member = $this->mustFind($id);
+        $member = $this->mustFind( $id );
 
-        $this->history->record($member->id, null, $member->status, null, null);
+        $this->history->record( $id, null, $member->status, null, null );
 
-        do_action('association_manager_member_status_changed', $member, null, $member->status);
+        do_action( 'association_manager_member_status_changed', $member, null, $member->status );
 
         return $member;
     }
 
-    public function activateMember(int $memberId, ?int $changedBy = null): Member
-    {
-        return $this->transitionStatus($memberId, MemberStatus::ACTIVE, $changedBy);
+    public function activateMember( int $memberId, ?int $changedBy = null ): Member {
+        return $this->transitionStatus( $memberId, MemberStatus::ACTIVE, $changedBy );
     }
 
-    public function suspendMember(int $memberId, ?int $changedBy = null, ?string $reason = null): Member
-    {
-        return $this->transitionStatus($memberId, MemberStatus::SUSPENDED, $changedBy, $reason);
+    public function suspendMember( int $memberId, ?int $changedBy = null, ?string $reason = null ): Member {
+        return $this->transitionStatus( $memberId, MemberStatus::SUSPENDED, $changedBy, $reason );
     }
 
-    public function archiveMember(int $memberId, ?int $changedBy = null): Member
-    {
-        return $this->transitionStatus($memberId, MemberStatus::INACTIVE, $changedBy);
+    public function archiveMember( int $memberId, ?int $changedBy = null ): Member {
+        return $this->transitionStatus( $memberId, MemberStatus::INACTIVE, $changedBy );
     }
 
-    public function expireMember(int $memberId, ?int $changedBy = null): Member
-    {
-        return $this->transitionStatus($memberId, MemberStatus::EXPIRED, $changedBy);
+    public function expireMember( int $memberId, ?int $changedBy = null ): Member {
+        return $this->transitionStatus( $memberId, MemberStatus::EXPIRED, $changedBy );
     }
 
     /**
@@ -74,25 +69,25 @@ final class MemberService
         ?int $changedBy = null,
         ?string $reason = null
     ): Member {
-        $member = $this->mustFind($memberId);
+        $member = $this->mustFind( $memberId );
 
-        if (!$this->statuses->isTransitionAllowed($member->status, $newStatus)) {
+        if ( ! $this->statuses->isTransitionAllowed( $member->status, $newStatus ) ) {
             throw new \LogicException(
                 "Cannot transition member from \"{$member->status}\" to \"{$newStatus}\"."
             );
         }
 
-        $approvedAt = ($newStatus === MemberStatus::ACTIVE && $member->approvedAt === null)
-            ? current_time('mysql')
+        $approvedAt = ( $newStatus === MemberStatus::ACTIVE && $member->approvedAt === null )
+            ? current_time( 'mysql' )
             : null;
 
-        $updated = $member->withStatus($newStatus, $approvedAt);
+        $updated = $member->withStatus( $newStatus, $approvedAt );
 
-        $this->repository->update($updated);
+        $this->repository->update( $updated );
 
-        $this->history->record($memberId, $member->status, $newStatus, $changedBy, $reason);
+        $this->history->record( $memberId, $member->status, $newStatus, $changedBy, $reason );
 
-        do_action('association_manager_member_status_changed', $updated, $member->status, $newStatus);
+        do_action( 'association_manager_member_status_changed', $updated, $member->status, $newStatus );
 
         return $updated;
     }
@@ -101,9 +96,8 @@ final class MemberService
      * Plain field correction, not a lifecycle event: no transition
      * check, no history entry, no action hook.
      */
-    public function updateMembershipType(int $memberId, ?string $membershipType): Member
-    {
-        $member = $this->mustFind($memberId);
+    public function updateMembershipType( int $memberId, ?string $membershipType ): Member {
+        $member = $this->mustFind( $memberId );
 
         $updated = new Member(
             id: $member->id,
@@ -118,7 +112,7 @@ final class MemberService
             approvedAt: $member->approvedAt,
         );
 
-        $this->repository->update($updated);
+        $this->repository->update( $updated );
 
         return $updated;
     }
@@ -142,13 +136,13 @@ final class MemberService
         ?int $importedBy = null,
         ?string $email = null
     ): array {
-        if ($status !== null && $this->statuses->get($status) === null) {
-            throw new \InvalidArgumentException("Unknown status \"{$status}\".");
+        if ( $status !== null && $this->statuses->get( $status ) === null ) {
+            throw new \InvalidArgumentException( "Unknown status \"{$status}\"." );
         }
 
-        $existing = $this->repository->findByMemberNumber($memberNumber);
+        $existing = $this->repository->findByMemberNumber( $memberNumber );
 
-        if ($existing === null) {
+        if ( $existing === null ) {
             $draft = new Member(
                 id: null,
                 uuid: null,
@@ -162,12 +156,15 @@ final class MemberService
                 approvedAt: null,
             );
 
-            $id = $this->repository->insert($draft);
-            $created = $this->mustFind($id);
+            $id      = $this->repository->insert( $draft );
+            $created = $this->mustFind( $id );
 
-            $this->history->record($id, null, $created->status, $importedBy, 'import');
+            $this->history->record( $id, null, $created->status, $importedBy, 'import' );
 
-            return ['action' => 'created', 'member' => $created];
+            return [
+				'action' => 'created',
+				'member' => $created,
+			];
         }
 
         $updated = new Member(
@@ -183,13 +180,16 @@ final class MemberService
             approvedAt: $existing->approvedAt,
         );
 
-        $this->repository->update($updated);
+        $this->repository->update( $updated );
 
-        if ($status !== null && $status !== $existing->status) {
-            $this->history->record($existing->id, $existing->status, $status, $importedBy, 'import');
+        if ( $status !== null && $status !== $existing->status ) {
+            $this->history->record( $existing->requireId(), $existing->status, $status, $importedBy, 'import' );
         }
 
-        return ['action' => 'updated', 'member' => $updated];
+        return [
+			'action' => 'updated',
+			'member' => $updated,
+		];
     }
 
     /**
@@ -197,11 +197,10 @@ final class MemberService
      * now always recorded in the renewal history regardless of whether
      * the status actually changed.
      */
-    public function renewMembership(int $memberId, string $newExpiresAt, ?int $changedBy = null): Member
-    {
-        $member = $this->mustFind($memberId);
+    public function renewMembership( int $memberId, string $newExpiresAt, ?int $changedBy = null ): Member {
+        $member = $this->mustFind( $memberId );
 
-        return $this->applyRenewal($member, null, $newExpiresAt, $changedBy);
+        return $this->applyRenewal( $member, null, $newExpiresAt, $changedBy );
     }
 
     /**
@@ -210,54 +209,52 @@ final class MemberService
      * renewing early never loses remaining time), for the plan's
      * duration.
      */
-    public function renewMembershipByPlan(int $memberId, ?int $changedBy = null): Member
-    {
-        $member = $this->mustFind($memberId);
+    public function renewMembershipByPlan( int $memberId, ?int $changedBy = null ): Member {
+        $member = $this->mustFind( $memberId );
 
-        $plan = $member->membershipType !== null ? $this->plans->get($member->membershipType) : null;
+        $plan = $member->membershipType !== null ? $this->plans->get( $member->membershipType ) : null;
 
-        if ($plan === null) {
+        if ( $plan === null ) {
             throw new \LogicException(
                 "No membership plan configured for type \"{$member->membershipType}\"."
             );
         }
 
-        $now = strtotime(current_time('mysql'));
-        $currentExpiry = $member->expiresAt !== null ? strtotime($member->expiresAt) : $now;
-        $base = max($now, $currentExpiry);
+        $now           = strtotime( current_time( 'mysql' ) );
+        $currentExpiry = $member->expiresAt !== null ? strtotime( $member->expiresAt ) : $now;
+        $base          = max( $now, $currentExpiry );
 
-        $newExpiresAt = date('Y-m-d H:i:s', $base + ($plan->durationDays * DAY_IN_SECONDS));
+        // date(), not gmdate(): $now/$currentExpiry are derived from current_time('mysql')'s
+        // site-local convention, which every other stored timestamp in this codebase follows
+        // (joined_at, approved_at, etc.) - gmdate() here would introduce a UTC/site-local mismatch.
+        $newExpiresAt = date( 'Y-m-d H:i:s', $base + ( $plan->durationDays * DAY_IN_SECONDS ) ); // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 
-        return $this->applyRenewal($member, $plan->key, $newExpiresAt, $changedBy);
+        return $this->applyRenewal( $member, $plan->key, $newExpiresAt, $changedBy );
     }
 
-    public function find(int $id): ?Member
-    {
-        return $this->repository->find($id);
+    public function find( int $id ): ?Member {
+        return $this->repository->find( $id );
     }
 
     /**
      * @return Member[]
      */
-    public function all(): array
-    {
+    public function all(): array {
         return $this->repository->all();
     }
 
     /**
      * @return PaginatedResult<Member>
      */
-    public function paginate(PaginationParams $params): PaginatedResult
-    {
-        return $this->repository->paginate($params);
+    public function paginate( PaginationParams $params ): PaginatedResult {
+        return $this->repository->paginate( $params );
     }
 
     /**
      * @return PaginatedResult<Member>
      */
-    public function search(MemberSearchCriteria $criteria, PaginationParams $params): PaginatedResult
-    {
-        return $this->repository->search($criteria, $params);
+    public function search( MemberSearchCriteria $criteria, PaginationParams $params ): PaginatedResult {
+        return $this->repository->search( $criteria, $params );
     }
 
     private function applyRenewal(
@@ -270,36 +267,35 @@ final class MemberService
             ? MemberStatus::ACTIVE
             : $member->status;
 
-        if ($targetStatus !== $member->status && !$this->statuses->isTransitionAllowed($member->status, $targetStatus)) {
+        if ( $targetStatus !== $member->status && ! $this->statuses->isTransitionAllowed( $member->status, $targetStatus ) ) {
             throw new \LogicException(
                 "Cannot renew a member with status \"{$member->status}\"."
             );
         }
 
         $renewed = $member
-            ->withStatus($targetStatus)
-            ->withExpiresAt($newExpiresAt);
+            ->withStatus( $targetStatus )
+            ->withExpiresAt( $newExpiresAt );
 
-        $this->repository->update($renewed);
+        $this->repository->update( $renewed );
 
-        $this->renewals->record($member->id, $planKey, $member->expiresAt, $newExpiresAt, $changedBy);
+        $this->renewals->record( $member->requireId(), $planKey, $member->expiresAt, $newExpiresAt, $changedBy );
 
-        if ($targetStatus !== $member->status) {
-            $this->history->record($member->id, $member->status, $targetStatus, $changedBy, 'renewal');
-            do_action('association_manager_member_status_changed', $renewed, $member->status, $targetStatus);
+        if ( $targetStatus !== $member->status ) {
+            $this->history->record( $member->requireId(), $member->status, $targetStatus, $changedBy, 'renewal' );
+            do_action( 'association_manager_member_status_changed', $renewed, $member->status, $targetStatus );
         }
 
-        do_action('association_manager_member_renewed', $renewed, $newExpiresAt);
+        do_action( 'association_manager_member_renewed', $renewed, $newExpiresAt );
 
         return $renewed;
     }
 
-    private function mustFind(int $id): Member
-    {
-        $member = $this->repository->find($id);
+    private function mustFind( int $id ): Member {
+        $member = $this->repository->find( $id );
 
-        if ($member === null) {
-            throw new \RuntimeException("Member not found: {$id}");
+        if ( $member === null ) {
+            throw new \RuntimeException( "Member not found: {$id}" );
         }
 
         return $member;

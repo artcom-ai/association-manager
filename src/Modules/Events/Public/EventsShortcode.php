@@ -6,10 +6,10 @@ namespace AssociationManager\Modules\Events\Public;
 
 use AssociationManager\Modules\Events\Services\EventService;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class EventsShortcode
-{
+final class EventsShortcode {
+
     public const TAG = 'association_manager_events';
 
     public function __construct(
@@ -17,13 +17,11 @@ final class EventsShortcode
     ) {
     }
 
-    public function register(): void
-    {
-        add_shortcode(self::TAG, [$this, 'render']);
+    public function register(): void {
+        add_shortcode( self::TAG, [ $this, 'render' ] );
     }
 
-    public function render(): string
-    {
+    public function render(): string {
         $events = $this->service->upcomingPublished();
 
         ob_start();

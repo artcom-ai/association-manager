@@ -15,12 +15,11 @@ use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleManager;
 use AssociationManager\Core\ServiceProviderInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class CoreServiceProvider implements ServiceProviderInterface
-{
-    public function register(Container $container): void
-    {
+final class CoreServiceProvider implements ServiceProviderInterface {
+
+    public function register( Container $container ): void {
         $container->set(
             ModuleManager::class,
             new ModuleManager()
@@ -31,23 +30,22 @@ final class CoreServiceProvider implements ServiceProviderInterface
             new AdminMenu()
         );
 
-        $container->set(FieldRegistry::class, new FieldRegistry());
-        $container->set(FieldValueRepositoryInterface::class, new FieldValueRepository());
+        $container->set( FieldRegistry::class, new FieldRegistry() );
+        $container->set( FieldValueRepositoryInterface::class, new FieldValueRepository() );
 
         $container->set(
             FieldValueService::class,
             new FieldValueService(
-                $container->get(FieldRegistry::class),
-                $container->get(FieldValueRepositoryInterface::class),
+                $container->get( FieldRegistry::class ),
+                $container->get( FieldValueRepositoryInterface::class ),
                 new FieldValidator()
             )
         );
     }
 
-    public function boot(Container $container): void
-    {
-        $adminMenu = $container->get(AdminMenu::class);
-        $adminMenu->register(new DashboardPage());
+    public function boot( Container $container ): void {
+        $adminMenu = $container->get( AdminMenu::class );
+        $adminMenu->register( new DashboardPage() );
         $adminMenu->boot();
     }
 }

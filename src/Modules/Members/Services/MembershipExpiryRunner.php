@@ -6,14 +6,14 @@ namespace AssociationManager\Modules\Members\Services;
 
 use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * The WP-Cron callback's body: finds active members past their
  * grace-adjusted cutoff and expires them.
  */
-final class MembershipExpiryRunner
-{
+final class MembershipExpiryRunner {
+
     public function __construct(
         private readonly MemberRepositoryInterface $repository,
         private readonly MemberService $memberService,
@@ -21,17 +21,16 @@ final class MembershipExpiryRunner
     ) {
     }
 
-    public function run(): int
-    {
-        $now = current_time('mysql');
-        $candidates = $this->repository->findExpiredCandidates($now);
+    public function run(): int {
+        $now        = current_time( 'mysql' );
+        $candidates = $this->repository->findExpiredCandidates( $now );
 
         $expired = 0;
 
-        foreach ($candidates as $member) {
-            if ($this->calculator->hasExpired($member, $now)) {
-                $this->memberService->expireMember($member->id);
-                $expired++;
+        foreach ( $candidates as $member ) {
+            if ( $this->calculator->hasExpired( $member, $now ) ) {
+                $this->memberService->expireMember( $member->requireId() );
+                ++$expired;
             }
         }
 

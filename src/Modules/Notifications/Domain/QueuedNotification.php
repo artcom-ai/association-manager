@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class QueuedNotification
-{
+final class QueuedNotification {
+
     public function __construct(
         public readonly ?int $id,
         public readonly string $eventKey,
@@ -46,8 +46,7 @@ final class QueuedNotification
         );
     }
 
-    public function markSent(string $sentAt): self
-    {
+    public function markSent( string $sentAt ): self {
         return new self(
             id: $this->id,
             eventKey: $this->eventKey,
@@ -63,8 +62,7 @@ final class QueuedNotification
         );
     }
 
-    public function markFailed(string $error): self
-    {
+    public function markFailed( string $error ): self {
         return new self(
             id: $this->id,
             eventKey: $this->eventKey,

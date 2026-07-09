@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Events\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class Event
-{
+final class Event {
+
     public function __construct(
         public readonly ?int $id,
         public readonly string $title,
@@ -40,10 +40,9 @@ final class Event
         );
     }
 
-    public function publish(): self
-    {
-        if ($this->status === EventStatus::CANCELLED) {
-            throw new \LogicException('Cannot publish a cancelled event.');
+    public function publish(): self {
+        if ( $this->status === EventStatus::CANCELLED ) {
+            throw new \LogicException( 'Cannot publish a cancelled event.' );
         }
 
         return new self(
@@ -58,8 +57,7 @@ final class Event
         );
     }
 
-    public function cancel(): self
-    {
+    public function cancel(): self {
         return new self(
             id: $this->id,
             title: $this->title,

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Payments\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class Payment
-{
+final class Payment {
+
     public function __construct(
         public readonly ?int $id,
         public readonly int $memberId,
@@ -39,8 +39,7 @@ final class Payment
         );
     }
 
-    public function complete(string $paidAt): self
-    {
+    public function complete( string $paidAt ): self {
         return new self(
             id: $this->id,
             memberId: $this->memberId,
@@ -53,8 +52,7 @@ final class Payment
         );
     }
 
-    public function fail(): self
-    {
+    public function fail(): self {
         return new self(
             id: $this->id,
             memberId: $this->memberId,
@@ -67,10 +65,9 @@ final class Payment
         );
     }
 
-    public function refund(): self
-    {
-        if ($this->status !== PaymentStatus::COMPLETED) {
-            throw new \LogicException('Only completed payments can be refunded.');
+    public function refund(): self {
+        if ( $this->status !== PaymentStatus::COMPLETED ) {
+            throw new \LogicException( 'Only completed payments can be refunded.' );
         }
 
         return new self(

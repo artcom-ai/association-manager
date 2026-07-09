@@ -4,24 +4,23 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Services;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Pure placeholder substitution - no storage or WordPress calls.
  */
-final class NotificationTemplateRenderer
-{
+final class NotificationTemplateRenderer {
+
     /**
      * @param array<string, string> $placeholders key => value, without braces
      */
-    public function render(string $text, array $placeholders): string
-    {
+    public function render( string $text, array $placeholders ): string {
         $replacements = [];
 
-        foreach ($placeholders as $key => $value) {
-            $replacements['{' . $key . '}'] = $value;
+        foreach ( $placeholders as $key => $value ) {
+            $replacements[ '{' . $key . '}' ] = $value;
         }
 
-        return strtr($text, $replacements);
+        return strtr( $text, $replacements );
     }
 }

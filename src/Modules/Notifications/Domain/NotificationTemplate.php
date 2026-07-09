@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Domain;
 
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 
-final class NotificationTemplate
-{
+final class NotificationTemplate {
+
     public function __construct(
         public readonly ?int $id,
         public readonly string $eventKey,
@@ -17,8 +17,7 @@ final class NotificationTemplate
     ) {
     }
 
-    public function withContent(string $subject, string $body): self
-    {
+    public function withContent( string $subject, string $body ): self {
         return new self(
             id: $this->id,
             eventKey: $this->eventKey,
