@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Documents\Rest;
 
-use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Services\DocumentService;
+use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -17,7 +17,8 @@ final class DocumentsController {
     private const NAMESPACE = 'association-manager/v1';
 
     public function __construct(
-        private readonly DocumentService $service
+        private readonly DocumentService $service,
+        private readonly MemberRepositoryInterface $members,
     ) {
     }
 
@@ -35,10 +36,10 @@ final class DocumentsController {
 
     // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- required by the REST route callback signature.
     public function index( WP_REST_Request $request ): WP_REST_Response {
-        $viewerLevel = is_user_logged_in() ? Visibility::VISIBILITY_PRIVATE : Visibility::VISIBILITY_PUBLIC;
+        $member = is_user_logged_in() ? $this->members->findByWpUserId( get_current_user_id() ) : null;
 
         return new WP_REST_Response(
-            array_map( [ $this, 'toArray' ], $this->service->listVisibleTo( $viewerLevel ) ),
+            array_map( [ $this, 'toArray' ], $this->service->listVisibleToViewer( $member ) ),
             200
         );
     }

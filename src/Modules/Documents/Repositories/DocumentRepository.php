@@ -61,6 +61,30 @@ final class DocumentRepository implements DocumentRepositoryInterface {
         return (int) $wpdb->insert_id;
     }
 
+    public function update( Document $document ): void {
+        if ( $document->id === null ) {
+            throw new \InvalidArgumentException( 'Cannot update a document without an id.' );
+        }
+
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'documents' );
+
+        $wpdb->update(
+            $table,
+            [
+                'title'       => $document->title,
+                'description' => $document->description,
+                'category'    => $document->category,
+                'visibility'  => $document->visibility,
+                'updated_at'  => current_time( 'mysql' ),
+            ],
+            [ 'id' => $document->id ],
+            [ '%s', '%s', '%s', '%s', '%s' ],
+            [ '%d' ]
+        );
+    }
+
     public function delete( int $id ): void {
         global $wpdb;
 

@@ -19,5 +19,7 @@ interface DocumentRepositoryInterface {
 
     public function insert( Document $document ): int;
 
+    public function update( Document $document ): void;
+
     public function delete( int $id ): void;
 }

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Documents\Services;
 
+use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Repositories\DocumentRepositoryInterface;
+use AssociationManager\Modules\Members\Domain\Member;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -26,6 +28,22 @@ final class DocumentService {
                 static fn ( Document $document ): bool => $document->isVisibleTo( $viewerLevel )
             )
         );
+    }
+
+    /**
+     * The actual access-control policy behind "members can view/download
+     * documents allowed for them": a viewer sees private-tier documents
+     * only if they resolve to a real, linked Member - not merely being
+     * logged into WordPress. $member is null for an anonymous visitor
+     * *or* a logged-in WP account with no linked Member record; both get
+     * the same public-only view. Callers (e.g. DocumentsController)
+     * resolve $member via MemberRepositoryInterface::findByWpUserId()
+     * before calling this.
+     *
+     * @return Document[]
+     */
+    public function listVisibleToViewer( ?Member $member ): array {
+        return $this->listVisibleTo( $member !== null ? Visibility::VISIBILITY_PRIVATE : Visibility::VISIBILITY_PUBLIC );
     }
 
     /**
@@ -75,6 +93,32 @@ final class DocumentService {
         do_action( 'association_manager_document_published', $document );
 
         return $document;
+    }
+
+    /**
+     * Corrects a document's title/description/category/visibility in
+     * place - never touches the underlying file (wpAttachmentId is
+     * preserved as-is). Replacing the file itself is a distinct,
+     * not-yet-built capability (versioning), out of scope here.
+     */
+    public function updateMetadata(
+        int $id,
+        string $title,
+        ?string $description,
+        ?string $category,
+        string $visibility
+    ): ?Document {
+        $document = $this->repository->find( $id );
+
+        if ( $document === null ) {
+            return null;
+        }
+
+        $updated = $document->withMetadata( $title, $description, $category, $visibility );
+
+        $this->repository->update( $updated );
+
+        return $updated;
     }
 
     public function delete( int $id ): void {

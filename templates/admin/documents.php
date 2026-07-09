@@ -82,6 +82,10 @@ defined('ABSPATH') || exit;
                             <?php esc_html_e('Download', 'association-manager'); ?>
                         </a>
                         |
+                        <a href="<?php echo esc_url(add_query_arg(['edit_id' => $document->id])); ?>">
+                            <?php esc_html_e('Edit', 'association-manager'); ?>
+                        </a>
+                        |
                         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline">
                             <?php wp_nonce_field('association_manager_delete_document_' . $document->id); ?>
                             <input type="hidden" name="action" value="association_manager_delete_document" />

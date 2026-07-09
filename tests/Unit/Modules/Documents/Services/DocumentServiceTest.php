@@ -8,6 +8,7 @@ use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Repositories\DocumentRepository;
 use AssociationManager\Modules\Documents\Services\DocumentService;
+use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Tests\Support\TestCase;
 
 final class DocumentServiceTest extends TestCase
@@ -38,6 +39,26 @@ final class DocumentServiceTest extends TestCase
 
         $adminView = $this->service->listVisibleTo(Visibility::VISIBILITY_ADMIN);
         $this->assertCount(3, $adminView);
+    }
+
+    public function testListVisibleToViewerGrantsPrivateTierOnlyToALinkedMember(): void
+    {
+        $this->repository->insert(Document::draft('Public doc', null, null, 1, Visibility::VISIBILITY_PUBLIC, null));
+        $this->repository->insert(Document::draft('Private doc', null, null, 2, Visibility::VISIBILITY_PRIVATE, null));
+
+        // Anonymous visitor - public only.
+        $this->assertCount(1, $this->service->listVisibleToViewer(null));
+
+        // A logged-in WP account with no linked Member record behaves
+        // exactly like an anonymous visitor - being logged into
+        // WordPress is not the same as being a member (this is the
+        // access-control gap this method exists to close).
+        $unlinkedAccount = null;
+        $this->assertCount(1, $this->service->listVisibleToViewer($unlinkedAccount));
+
+        // A real, linked member sees the private tier too.
+        $member = new Member(1, 'uuid-1', 42, 'M-001', null, 'active', 'individual', null, null, null);
+        $this->assertCount(2, $this->service->listVisibleToViewer($member));
     }
 
     public function testUploadPersistsAndFiresDocumentPublishedAction(): void
@@ -75,6 +96,26 @@ final class DocumentServiceTest extends TestCase
             ['name' => 'bad.pdf', 'type' => 'application/pdf', 'tmp_name' => '/tmp/x', 'error' => 0, 'size' => 100],
             null
         );
+    }
+
+    public function testUpdateMetadataCorrectsFieldsWithoutTouchingTheFile(): void
+    {
+        $id = $this->repository->insert(
+            Document::draft('Old', null, null, 42, Visibility::VISIBILITY_ADMIN, null)
+        );
+
+        $updated = $this->service->updateMetadata($id, 'New title', 'New desc', 'new-cat', Visibility::VISIBILITY_PUBLIC);
+
+        $this->assertNotNull($updated);
+        $this->assertSame('New title', $updated->title);
+        $this->assertSame(Visibility::VISIBILITY_PUBLIC, $updated->visibility);
+        $this->assertSame(42, $updated->wpAttachmentId);
+        $this->assertSame([], $this->deletedAttachments(), 'metadata updates must never touch the underlying attachment');
+    }
+
+    public function testUpdateMetadataOfMissingDocumentReturnsNull(): void
+    {
+        $this->assertNull($this->service->updateMetadata(999, 'x', null, null, Visibility::VISIBILITY_PUBLIC));
     }
 
     public function testDeleteRemovesRowAndDeletesAttachment(): void

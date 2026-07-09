@@ -41,13 +41,23 @@ final class DocumentsPage implements AdminPageInterface {
     }
 
     public function render(): void {
-        $documents         = $this->service->all();
         $visibilityOptions = [
             Visibility::VISIBILITY_PUBLIC  => __( 'Public', 'association-manager' ),
-            Visibility::VISIBILITY_PRIVATE => __( 'Private (logged-in members)', 'association-manager' ),
+            Visibility::VISIBILITY_PRIVATE => __( 'Members only', 'association-manager' ),
             Visibility::VISIBILITY_ADMIN   => __( 'Admin only', 'association-manager' ),
         ];
         $noticeType        = isset( $_GET['am_notice'] ) ? sanitize_text_field( (string) $_GET['am_notice'] ) : null;
+        $editId            = isset( $_GET['edit_id'] ) ? (int) $_GET['edit_id'] : null;
+
+        if ( $editId !== null ) {
+            $document = $this->service->find( $editId );
+
+            require AM_PLUGIN_DIR . 'templates/admin/document-edit.php';
+
+            return;
+        }
+
+        $documents = $this->service->all();
 
         require AM_PLUGIN_DIR . 'templates/admin/documents.php';
     }

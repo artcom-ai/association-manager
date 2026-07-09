@@ -47,4 +47,23 @@ final class Document {
     public function isVisibleTo( string $viewerLevel ): bool {
         return Visibility::isAtLeast( $this->visibility, $viewerLevel );
     }
+
+    /**
+     * Metadata correction only - the file itself (wpAttachmentId) never
+     * changes here; re-uploading a replacement file is a distinct,
+     * not-yet-built capability (versioning), not this.
+     */
+    public function withMetadata( string $title, ?string $description, ?string $category, string $visibility ): self {
+        return new self(
+            id: $this->id,
+            title: $title,
+            description: $description,
+            category: $category,
+            wpAttachmentId: $this->wpAttachmentId,
+            visibility: $visibility,
+            uploadedBy: $this->uploadedBy,
+            createdAt: $this->createdAt,
+            updatedAt: $this->updatedAt,
+        );
+    }
 }
