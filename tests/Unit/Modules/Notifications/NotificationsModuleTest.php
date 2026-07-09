@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace AssociationManager\Tests\Unit\Modules\Notifications;
 
+use AssociationManager\Core\Templating\TemplateRenderer;
+use AssociationManager\Modules\Certificates\Domain\Certificate;
+use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Repositories\MemberRepository;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
 use AssociationManager\Modules\Notifications\NotificationsModule;
 use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepository;
 use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepository;
 use AssociationManager\Modules\Notifications\Services\NotificationDispatcher;
-use AssociationManager\Modules\Notifications\Services\NotificationTemplateRenderer;
 use AssociationManager\Tests\Support\TestCase;
 use ReflectionMethod;
 
@@ -41,12 +44,12 @@ final class NotificationsModuleTest extends TestCase
         $this->dispatcher = new NotificationDispatcher(
             $this->templates,
             $this->queue,
-            new NotificationTemplateRenderer(),
+            new TemplateRenderer(),
         );
 
         $this->setNow('2026-01-01 00:00:00');
 
-        foreach (['admin_new_member', 'member_activated', 'member_suspended', 'member_archived', 'membership_renewed'] as $eventKey) {
+        foreach (['admin_new_member', 'member_activated', 'member_suspended', 'member_archived', 'membership_renewed', 'document_published', 'certificate_issued'] as $eventKey) {
             $this->templates->save(new NotificationTemplate(
                 null,
                 $eventKey,
@@ -116,6 +119,50 @@ final class NotificationsModuleTest extends TestCase
         $member = new Member(1, 'uuid-1', null, 'M-001', null, 'active', 'individual', null, null, null);
 
         $this->assertNull($this->invokeResolveMemberEmail($member));
+    }
+
+    public function testDocumentPublishedNotifiesAdminAddress(): void
+    {
+        $this->setOption('admin_email', 'admin@example.test');
+        $document = Document::draft('Bylaws', null, 'governance', 42, 'public', null);
+
+        $method = new ReflectionMethod(NotificationsModule::class, 'handleDocumentPublished');
+        $method->setAccessible(true);
+        $method->invoke($this->module, $this->dispatcher, $document);
+
+        $due = $this->queue->findDue('2026-01-01 00:00:00');
+        $this->assertCount(1, $due);
+        $this->assertSame('document_published', $due[0]->eventKey);
+        $this->assertSame('admin@example.test', $due[0]->recipient);
+    }
+
+    public function testCertificateIssuedNotifiesTheMember(): void
+    {
+        $members = new MemberRepository();
+        $memberId = $members->insert(Member::draft(null, 'individual', 'jane@example.test'));
+
+        $certificate = new Certificate(1, $memberId, 'membership', 77, '2026-01-01 00:00:00', null);
+
+        $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
+        $method->setAccessible(true);
+        $method->invoke($this->module, $this->dispatcher, $members, $certificate);
+
+        $due = $this->queue->findDue('2026-01-01 00:00:00');
+        $this->assertCount(1, $due);
+        $this->assertSame('certificate_issued', $due[0]->eventKey);
+        $this->assertSame('jane@example.test', $due[0]->recipient);
+    }
+
+    public function testCertificateIssuedForUnknownMemberDoesNotEnqueue(): void
+    {
+        $members = new MemberRepository();
+        $certificate = new Certificate(1, 999, 'membership', 77, '2026-01-01 00:00:00', null);
+
+        $method = new ReflectionMethod(NotificationsModule::class, 'handleCertificateIssued');
+        $method->setAccessible(true);
+        $method->invoke($this->module, $this->dispatcher, $members, $certificate);
+
+        $this->assertCount(0, $this->queue->findDue('2026-01-01 00:00:00'));
     }
 
     private function invokeHandleMemberStatusChanged(Member $member, ?string $oldStatus, string $newStatus): void

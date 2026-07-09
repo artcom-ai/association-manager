@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace AssociationManager\Tests\Unit\Modules\Notifications\Services;
 
+use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
 use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepository;
 use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRepository;
 use AssociationManager\Modules\Notifications\Services\NotificationDispatcher;
-use AssociationManager\Modules\Notifications\Services\NotificationTemplateRenderer;
 use AssociationManager\Tests\Support\TestCase;
 
 final class NotificationDispatcherTest extends TestCase
@@ -28,7 +28,7 @@ final class NotificationDispatcherTest extends TestCase
         $this->dispatcher = new NotificationDispatcher(
             $this->templates,
             $this->queue,
-            new NotificationTemplateRenderer(),
+            new TemplateRenderer(),
         );
 
         $this->setNow('2026-01-01 00:00:00');

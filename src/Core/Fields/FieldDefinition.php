@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Core\Fields;
 
+use AssociationManager\Core\Visibility;
+
 defined( 'ABSPATH' ) || exit;
 
 final class FieldDefinition {
@@ -17,15 +19,9 @@ final class FieldDefinition {
     public const TYPE_FILE     = 'file';
     public const TYPE_LOCATION = 'location';
 
-    public const VISIBILITY_PUBLIC  = 'public';
-    public const VISIBILITY_PRIVATE = 'private';
-    public const VISIBILITY_ADMIN   = 'admin';
-
-    private const VISIBILITY_RANK = [
-        self::VISIBILITY_PUBLIC  => 0,
-        self::VISIBILITY_PRIVATE => 1,
-        self::VISIBILITY_ADMIN   => 2,
-    ];
+    public const VISIBILITY_PUBLIC  = Visibility::VISIBILITY_PUBLIC;
+    public const VISIBILITY_PRIVATE = Visibility::VISIBILITY_PRIVATE;
+    public const VISIBILITY_ADMIN   = Visibility::VISIBILITY_ADMIN;
 
     /**
      * @param array<string, string>|null $options value => label, only for TYPE_SELECT
@@ -52,9 +48,6 @@ final class FieldDefinition {
      * visibility rank is no more restrictive than the viewer's.
      */
     public function isVisibleTo( string $viewerLevel ): bool {
-        $fieldRank  = self::VISIBILITY_RANK[ $this->visibility ] ?? self::VISIBILITY_RANK[ self::VISIBILITY_ADMIN ];
-        $viewerRank = self::VISIBILITY_RANK[ $viewerLevel ] ?? self::VISIBILITY_RANK[ self::VISIBILITY_PUBLIC ];
-
-        return $fieldRank <= $viewerRank;
+        return Visibility::isAtLeast( $this->visibility, $viewerLevel );
     }
 }

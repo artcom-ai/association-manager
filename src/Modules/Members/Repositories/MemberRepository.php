@@ -41,6 +41,19 @@ final class MemberRepository implements MemberRepositoryInterface {
         return $row ? $this->hydrate( $row ) : null;
     }
 
+    public function findByWpUserId( int $wpUserId ): ?Member {
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'members' );
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare( "SELECT * FROM {$table} WHERE wp_user_id = %d", $wpUserId ),
+            ARRAY_A
+        );
+
+        return $row ? $this->hydrate( $row ) : null;
+    }
+
     /**
      * @return Member[]
      */
@@ -164,6 +177,7 @@ final class MemberRepository implements MemberRepositoryInterface {
         $wpdb->update(
             $table,
             [
+                'wp_user_id'      => $member->wpUserId,
                 'member_number'   => $member->memberNumber,
                 'email'           => $member->email,
                 'status'          => $member->status,
@@ -174,7 +188,7 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'updated_at'      => current_time( 'mysql' ),
             ],
             [ 'id' => $member->id ],
-            [ '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ],
+            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ],
             [ '%d' ]
         );
     }

@@ -28,6 +28,10 @@ final class MigrationLoaderTest extends TestCase
                 '008_add_email_to_members_table',
                 '009_create_notification_templates_table',
                 '010_create_notification_queue_table',
+                '011_create_documents_table',
+                '012_create_certificate_templates_table',
+                '013_create_certificates_table',
+                '014_seed_document_certificate_notification_templates',
             ],
             $ids
         );

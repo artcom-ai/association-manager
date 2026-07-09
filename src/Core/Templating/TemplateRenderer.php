@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AssociationManager\Modules\Notifications\Services;
+namespace AssociationManager\Core\Templating;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Pure placeholder substitution - no storage or WordPress calls.
+ * Shared by Notifications (email subject/body) and Certificates
+ * (certificate HTML) - the "{token}" -> value scheme is the same
+ * either way.
  */
-final class NotificationTemplateRenderer {
+final class TemplateRenderer {
 
     /**
      * @param array<string, string> $placeholders key => value, without braces

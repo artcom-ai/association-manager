@@ -106,6 +106,23 @@ function media_handle_upload($fieldKey, $postId) {
     return $GLOBALS['__am_test_media_upload_result'];
 }
 
+// --- attachments (Documents/Certificates) ---
+$GLOBALS['__am_test_deleted_attachments'] = [];
+function wp_delete_attachment($attachmentId, $forceDelete = false) {
+    $GLOBALS['__am_test_deleted_attachments'][] = $attachmentId;
+    return true;
+}
+function wp_get_attachment_url($attachmentId) {
+    return 'http://example.test/wp-content/uploads/attachment-' . $attachmentId . '.pdf';
+}
+function wp_tempnam($filename = '', $dir = '') {
+    return sys_get_temp_dir() . '/' . uniqid('am_test_', true);
+}
+$GLOBALS['__am_test_media_sideload_result'] = 1;
+function media_handle_sideload($fileArray, $postId, $desc = null) {
+    return $GLOBALS['__am_test_media_sideload_result'];
+}
+
 // --- options ---
 $GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
 function get_option($key, $default = false) { return $GLOBALS['__am_test_options'][$key] ?? $default; }

@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace AssociationManager\Tests\Unit\Modules\Notifications\Services;
+namespace AssociationManager\Tests\Unit\Core\Templating;
 
-use AssociationManager\Modules\Notifications\Services\NotificationTemplateRenderer;
+use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Tests\Support\TestCase;
 
-final class NotificationTemplateRendererTest extends TestCase
+final class TemplateRendererTest extends TestCase
 {
-    private NotificationTemplateRenderer $renderer;
+    private TemplateRenderer $renderer;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->renderer = new NotificationTemplateRenderer();
+        $this->renderer = new TemplateRenderer();
     }
 
     public function testSubstitutesPlaceholders(): void

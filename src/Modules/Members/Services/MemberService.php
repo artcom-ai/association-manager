@@ -118,6 +118,40 @@ final class MemberService {
     }
 
     /**
+     * Links an existing member to a WP user account so they can access
+     * the Member Portal - plain field correction, not a lifecycle
+     * event, same reasoning as updateMembershipType(). Rejects linking
+     * a WP account that's already linked to a different member (each
+     * portal login must resolve to exactly one member).
+     */
+    public function linkWpUser( int $memberId, int $wpUserId ): Member {
+        $member = $this->mustFind( $memberId );
+
+        $existingLink = $this->repository->findByWpUserId( $wpUserId );
+
+        if ( $existingLink !== null && $existingLink->requireId() !== $memberId ) {
+            throw new \LogicException( "WP user {$wpUserId} is already linked to another member." );
+        }
+
+        $updated = new Member(
+            id: $member->id,
+            uuid: $member->uuid,
+            wpUserId: $wpUserId,
+            memberNumber: $member->memberNumber,
+            email: $member->email,
+            status: $member->status,
+            membershipType: $member->membershipType,
+            joinedAt: $member->joinedAt,
+            expiresAt: $member->expiresAt,
+            approvedAt: $member->approvedAt,
+        );
+
+        $this->repository->update( $updated );
+
+        return $updated;
+    }
+
+    /**
      * CSV import row: create-or-update matched by member_number.
      * Deliberately bypasses the transition-graph check (a bulk data
      * load represents ground truth, not a business-rule-governed

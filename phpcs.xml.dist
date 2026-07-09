@@ -66,6 +66,10 @@
              require loading the entire uploaded file into memory). -->
         <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fopen"/>
         <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_fclose"/>
+        <!-- Same category: writing generated PDF bytes to a wp_tempnam()
+             temp file that's immediately handed to media_handle_sideload()
+             and discarded - not a WP-managed content location. -->
+        <exclude name="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents"/>
         <!-- Verified empirically (php -r) that "Public" parses correctly
              as a namespace path segment on the target PHP version. This
              codebase deliberately uses Public/ as a module's public-facing

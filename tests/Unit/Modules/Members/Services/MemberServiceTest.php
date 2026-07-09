@@ -84,6 +84,37 @@ final class MemberServiceTest extends TestCase
         $this->assertNull($member->email);
     }
 
+    public function testLinkWpUserSetsWpUserId(): void
+    {
+        $member = $this->service->createMember(null, 'individual');
+
+        $linked = $this->service->linkWpUser($member->id, 55);
+
+        $this->assertSame(55, $linked->wpUserId);
+        $this->assertSame(55, $this->service->find($member->id)->wpUserId);
+    }
+
+    public function testLinkWpUserRejectsAccountAlreadyLinkedToAnotherMember(): void
+    {
+        $first = $this->service->createMember(null, 'individual');
+        $second = $this->service->createMember(null, 'individual');
+
+        $this->service->linkWpUser($first->id, 55);
+
+        $this->expectException(\LogicException::class);
+        $this->service->linkWpUser($second->id, 55);
+    }
+
+    public function testLinkWpUserAllowsRelinkingSameMemberToSameAccount(): void
+    {
+        $member = $this->service->createMember(null, 'individual');
+
+        $this->service->linkWpUser($member->id, 55);
+        $relinked = $this->service->linkWpUser($member->id, 55);
+
+        $this->assertSame(55, $relinked->wpUserId);
+    }
+
     public function testActivateSuspendReinstateArchiveLifecycle(): void
     {
         $member = $this->service->createMember(null, 'individual');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Notifications\Services;
 
+use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\QueuedNotification;
 use AssociationManager\Modules\Notifications\Repositories\NotificationQueueRepositoryInterface;
@@ -16,7 +17,7 @@ final class NotificationDispatcher {
     public function __construct(
         private readonly NotificationTemplateRepositoryInterface $templates,
         private readonly NotificationQueueRepositoryInterface $queue,
-        private readonly NotificationTemplateRenderer $renderer,
+        private readonly TemplateRenderer $renderer,
     ) {
     }
 

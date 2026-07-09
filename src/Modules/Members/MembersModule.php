@@ -104,6 +104,13 @@ final class MembersModule implements ModuleInterface {
         );
 
         add_action(
+            'admin_post_association_manager_link_wp_user',
+            function () use ( $service ): void {
+                $this->handleLinkWpUser( $service );
+            }
+        );
+
+        add_action(
             self::EXPIRY_CRON_HOOK,
             static function () use ( $expiryRunner ): void {
 				$expiryRunner->run();
@@ -209,6 +216,37 @@ final class MembersModule implements ModuleInterface {
             $redirectArgs['am_notice'] = 'saved';
         } catch ( FieldValidationException ) {
             $redirectArgs['am_notice'] = 'invalid';
+        }
+
+        wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    private function handleLinkWpUser( MemberService $service ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+
+        check_admin_referer( 'association_manager_link_wp_user_' . $memberId );
+
+        $wpUserId = isset( $_POST['wp_user_id'] ) ? (int) $_POST['wp_user_id'] : 0;
+
+        $redirectArgs = [
+			'page' => EditMemberPage::SLUG,
+			'id'   => $memberId,
+		];
+
+        if ( $wpUserId <= 0 ) {
+            $redirectArgs['am_notice'] = 'link_invalid';
+        } else {
+            try {
+                $service->linkWpUser( $memberId, $wpUserId );
+                $redirectArgs['am_notice'] = 'linked';
+            } catch ( \LogicException ) {
+                $redirectArgs['am_notice'] = 'link_conflict';
+            }
         }
 
         wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );

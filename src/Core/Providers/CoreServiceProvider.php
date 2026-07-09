@@ -14,6 +14,7 @@ use AssociationManager\Core\Fields\Services\FieldValidator;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleManager;
 use AssociationManager\Core\ServiceProviderInterface;
+use AssociationManager\Core\Templating\TemplateRenderer;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,6 +33,7 @@ final class CoreServiceProvider implements ServiceProviderInterface {
 
         $container->set( FieldRegistry::class, new FieldRegistry() );
         $container->set( FieldValueRepositoryInterface::class, new FieldValueRepository() );
+        $container->set( TemplateRenderer::class, new TemplateRenderer() );
 
         $container->set(
             FieldValueService::class,

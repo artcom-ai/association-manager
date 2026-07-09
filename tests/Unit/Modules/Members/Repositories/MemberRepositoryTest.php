@@ -55,6 +55,17 @@ final class MemberRepositoryTest extends TestCase
         $this->assertNull($this->repository->findByMemberNumber('NO-SUCH-NUMBER'));
     }
 
+    public function testFindByWpUserId(): void
+    {
+        $id = $this->repository->insert(Member::draft(42, 'individual'));
+
+        $found = $this->repository->findByWpUserId(42);
+        $this->assertNotNull($found);
+        $this->assertSame($id, $found->id);
+
+        $this->assertNull($this->repository->findByWpUserId(999));
+    }
+
     public function testPaginateReturnsCorrectTotalAndPageSlicing(): void
     {
         for ($i = 0; $i < 25; $i++) {

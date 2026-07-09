@@ -7,8 +7,12 @@ namespace AssociationManager\Modules\Notifications;
 use AssociationManager\Core\Admin\AdminMenu;
 use AssociationManager\Core\Container;
 use AssociationManager\Core\ModuleInterface;
+use AssociationManager\Core\Templating\TemplateRenderer;
+use AssociationManager\Modules\Certificates\Domain\Certificate;
+use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
+use AssociationManager\Modules\Members\Repositories\MemberRepositoryInterface;
 use AssociationManager\Modules\Notifications\Admin\NotificationTemplatesPage;
 use AssociationManager\Modules\Notifications\Domain\NotificationChannel;
 use AssociationManager\Modules\Notifications\Domain\NotificationTemplate;
@@ -19,7 +23,6 @@ use AssociationManager\Modules\Notifications\Repositories\NotificationTemplateRe
 use AssociationManager\Modules\Notifications\Rest\NotificationsController;
 use AssociationManager\Modules\Notifications\Services\NotificationDispatcher;
 use AssociationManager\Modules\Notifications\Services\NotificationQueueRunner;
-use AssociationManager\Modules\Notifications\Services\NotificationTemplateRenderer;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,14 +37,13 @@ final class NotificationsModule implements ModuleInterface {
     public function register( Container $container ): void {
         $container->set( NotificationTemplateRepositoryInterface::class, new NotificationTemplateRepository() );
         $container->set( NotificationQueueRepositoryInterface::class, new NotificationQueueRepository() );
-        $container->set( NotificationTemplateRenderer::class, new NotificationTemplateRenderer() );
 
         $container->set(
             NotificationDispatcher::class,
             new NotificationDispatcher(
                 $container->get( NotificationTemplateRepositoryInterface::class ),
                 $container->get( NotificationQueueRepositoryInterface::class ),
-                $container->get( NotificationTemplateRenderer::class ),
+                $container->get( TemplateRenderer::class ),
             )
         );
 
@@ -55,6 +57,7 @@ final class NotificationsModule implements ModuleInterface {
         $dispatcher  = $container->get( NotificationDispatcher::class );
         $templates   = $container->get( NotificationTemplateRepositoryInterface::class );
         $queueRunner = $container->get( NotificationQueueRunner::class );
+        $members     = $container->get( MemberRepositoryInterface::class );
 
         $container->get( AdminMenu::class )->register( new NotificationTemplatesPage( $templates ) );
 
@@ -110,10 +113,61 @@ final class NotificationsModule implements ModuleInterface {
         );
 
         add_action(
+            'association_manager_document_published',
+            function ( Document $document ) use ( $dispatcher ): void {
+                $this->handleDocumentPublished( $dispatcher, $document );
+            },
+            10,
+            1
+        );
+
+        add_action(
+            'association_manager_certificate_issued',
+            function ( Certificate $certificate ) use ( $dispatcher, $members ): void {
+                $this->handleCertificateIssued( $dispatcher, $members, $certificate );
+            },
+            10,
+            1
+        );
+
+        add_action(
             'rest_api_init',
             function () use ( $templates ): void {
 				( new NotificationsController( $templates ) )->registerRoutes();
 			}
+        );
+    }
+
+    private function handleDocumentPublished( NotificationDispatcher $dispatcher, Document $document ): void {
+        $dispatcher->notify(
+            'document_published',
+            get_option( 'admin_email' ),
+            [
+                'title'    => $document->title,
+                'category' => $document->category ?? '',
+            ]
+        );
+    }
+
+    private function handleCertificateIssued(
+        NotificationDispatcher $dispatcher,
+        MemberRepositoryInterface $members,
+        Certificate $certificate
+    ): void {
+        $member = $members->find( $certificate->memberId );
+
+        if ( $member === null ) {
+            return;
+        }
+
+        $dispatcher->notify(
+            'certificate_issued',
+            $this->resolveMemberEmail( $member ),
+            [
+                'member_number' => $member->memberNumber ?? '',
+                'type_key'      => $certificate->typeKey,
+                'issued_at'     => $certificate->issuedAt,
+            ]
         );
     }
 

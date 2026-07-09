@@ -36,6 +36,8 @@ abstract class TestCase extends BaseTestCase
         $GLOBALS['__am_test_users'] = [];
         $GLOBALS['__am_test_mail_result'] = true;
         $GLOBALS['__am_test_sent_mail'] = [];
+        $GLOBALS['__am_test_deleted_attachments'] = [];
+        $GLOBALS['__am_test_media_sideload_result'] = 1;
     }
 
     protected function setNow(string $mysqlDateTime): void
@@ -78,6 +80,14 @@ abstract class TestCase extends BaseTestCase
     protected function sentMail(): array
     {
         return $GLOBALS['__am_test_sent_mail'];
+    }
+
+    /**
+     * @return int[]
+     */
+    protected function deletedAttachments(): array
+    {
+        return $GLOBALS['__am_test_deleted_attachments'];
     }
 
     /**

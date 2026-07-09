@@ -6,11 +6,14 @@ namespace AssociationManager\Core;
 
 use AssociationManager\Core\Providers\CoreServiceProvider;
 use AssociationManager\Database\Migrator;
+use AssociationManager\Modules\Certificates\CertificatesModule;
 use AssociationManager\Modules\Directory\DirectoryModule;
+use AssociationManager\Modules\Documents\DocumentsModule;
 use AssociationManager\Modules\Events\EventsModule;
 use AssociationManager\Modules\Members\MembersModule;
 use AssociationManager\Modules\Notifications\NotificationsModule;
 use AssociationManager\Modules\Payments\PaymentsModule;
+use AssociationManager\Modules\Portal\PortalModule;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -52,16 +55,24 @@ final class Kernel {
         $moduleManager = $this->container->get( ModuleManager::class );
 
         $modules = [
-            // Directory depends on Members' MemberRepositoryInterface, so
-            // Members must register() first (see ADR-004).
+            // Directory and Certificates both depend on Members'
+            // MemberRepositoryInterface, so Members must register() first
+            // (see ADR-004).
             new MembersModule(),
             new DirectoryModule(),
             new PaymentsModule(),
             new EventsModule(),
+            // Documents has no dependency on any other module.
+            new DocumentsModule(),
+            new CertificatesModule(),
             // Notifications only ever consumes Members' fired events (plain
             // WordPress hooks, not container-resolved services), so it has
             // no registration-order constraint relative to Members.
             new NotificationsModule(),
+            // Portal's register() resolves Members/Documents/Certificates'
+            // services directly from the container (not just at boot
+            // time), so it must be registered strictly after all three.
+            new PortalModule(),
         ];
 
         foreach ( $modules as $module ) {
