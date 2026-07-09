@@ -19,6 +19,8 @@ interface MemberRepositoryInterface {
 
     public function findByWpUserId( int $wpUserId ): ?Member;
 
+    public function findBySource( string $sourceSystem, int $sourceUserId ): ?Member;
+
     /**
      * @return Member[]
      */

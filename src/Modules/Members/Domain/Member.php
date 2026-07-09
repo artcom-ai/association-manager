@@ -19,6 +19,9 @@ final class Member {
         public readonly ?string $joinedAt,
         public readonly ?string $expiresAt,
         public readonly ?string $approvedAt,
+        public readonly ?string $sourceSystem = null,
+        public readonly ?int $sourceUserId = null,
+        public readonly ?string $importedAt = null,
     ) {
     }
 
@@ -33,7 +36,14 @@ final class Member {
         return $this->id ?? throw new \LogicException( 'Member has no id (not yet persisted).' );
     }
 
-    public static function draft( ?int $wpUserId, ?string $membershipType, ?string $email = null ): self {
+    public static function draft(
+        ?int $wpUserId,
+        ?string $membershipType,
+        ?string $email = null,
+        ?string $sourceSystem = null,
+        ?int $sourceUserId = null,
+        ?string $importedAt = null
+    ): self {
         return new self(
             id: null,
             uuid: null,
@@ -45,6 +55,9 @@ final class Member {
             joinedAt: null,
             expiresAt: null,
             approvedAt: null,
+            sourceSystem: $sourceSystem,
+            sourceUserId: $sourceUserId,
+            importedAt: $importedAt,
         );
     }
 
@@ -64,6 +77,9 @@ final class Member {
             joinedAt: $this->joinedAt,
             expiresAt: $this->expiresAt,
             approvedAt: $approvedAt ?? $this->approvedAt,
+            sourceSystem: $this->sourceSystem,
+            sourceUserId: $this->sourceUserId,
+            importedAt: $this->importedAt,
         );
     }
 
@@ -79,6 +95,34 @@ final class Member {
             joinedAt: $this->joinedAt,
             expiresAt: $expiresAt,
             approvedAt: $this->approvedAt,
+            sourceSystem: $this->sourceSystem,
+            sourceUserId: $this->sourceUserId,
+            importedAt: $this->importedAt,
+        );
+    }
+
+    /**
+     * Records (or refreshes) where this member's data came from - set at
+     * import creation time and re-stamped on every subsequent re-import
+     * of the same source row, which is what makes re-running an importer
+     * idempotent (MemberImportService looks members up by these two
+     * fields before deciding to create vs. update).
+     */
+    public function withImportSource( string $sourceSystem, int $sourceUserId, string $importedAt ): self {
+        return new self(
+            id: $this->id,
+            uuid: $this->uuid,
+            wpUserId: $this->wpUserId,
+            memberNumber: $this->memberNumber,
+            email: $this->email,
+            status: $this->status,
+            membershipType: $this->membershipType,
+            joinedAt: $this->joinedAt,
+            expiresAt: $this->expiresAt,
+            approvedAt: $this->approvedAt,
+            sourceSystem: $sourceSystem,
+            sourceUserId: $sourceUserId,
+            importedAt: $importedAt,
         );
     }
 }

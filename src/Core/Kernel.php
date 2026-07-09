@@ -10,6 +10,7 @@ use AssociationManager\Modules\Certificates\CertificatesModule;
 use AssociationManager\Modules\Directory\DirectoryModule;
 use AssociationManager\Modules\Documents\DocumentsModule;
 use AssociationManager\Modules\Events\EventsModule;
+use AssociationManager\Modules\Importers\ImportersModule;
 use AssociationManager\Modules\Members\MembersModule;
 use AssociationManager\Modules\Notifications\NotificationsModule;
 use AssociationManager\Modules\Payments\PaymentsModule;
@@ -57,8 +58,10 @@ final class Kernel {
         $modules = [
             // Directory and Certificates both depend on Members'
             // MemberRepositoryInterface, so Members must register() first
-            // (see ADR-004).
+            // (see ADR-004). Importers depends on Members'
+            // MemberRepositoryInterface/MemberService the same way.
             new MembersModule(),
+            new ImportersModule(),
             new DirectoryModule(),
             new PaymentsModule(),
             new EventsModule(),

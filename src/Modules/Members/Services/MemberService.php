@@ -110,6 +110,9 @@ final class MemberService {
             joinedAt: $member->joinedAt,
             expiresAt: $member->expiresAt,
             approvedAt: $member->approvedAt,
+            sourceSystem: $member->sourceSystem,
+            sourceUserId: $member->sourceUserId,
+            importedAt: $member->importedAt,
         );
 
         $this->repository->update( $updated );
@@ -144,6 +147,9 @@ final class MemberService {
             joinedAt: $member->joinedAt,
             expiresAt: $member->expiresAt,
             approvedAt: $member->approvedAt,
+            sourceSystem: $member->sourceSystem,
+            sourceUserId: $member->sourceUserId,
+            importedAt: $member->importedAt,
         );
 
         $this->repository->update( $updated );
@@ -212,6 +218,9 @@ final class MemberService {
             joinedAt: $joinedAt ?? $existing->joinedAt,
             expiresAt: $expiresAt ?? $existing->expiresAt,
             approvedAt: $existing->approvedAt,
+            sourceSystem: $existing->sourceSystem,
+            sourceUserId: $existing->sourceUserId,
+            importedAt: $existing->importedAt,
         );
 
         $this->repository->update( $updated );
@@ -272,6 +281,84 @@ final class MemberService {
 
     public function findByWpUserId( int $wpUserId ): ?Member {
         return $this->repository->findByWpUserId( $wpUserId );
+    }
+
+    public function findBySource( string $sourceSystem, int $sourceUserId ): ?Member {
+        return $this->repository->findBySource( $sourceSystem, $sourceUserId );
+    }
+
+    /**
+     * Creates a member from an importer row. $wpUserId is passed
+     * separately from $sourceUserId (even though for a WP-user-based
+     * importer like MemberPress they're the same value) so this stays
+     * usable by a future importer whose source has no WP account
+     * relationship at all. Fires the same status-changed hook/history
+     * entry as createMember() - an imported member is a real new member,
+     * not a special case Notifications or history should ignore.
+     */
+    public function createFromImport(
+        ?int $wpUserId,
+        ?string $email,
+        string $sourceSystem,
+        int $sourceUserId,
+        string $importedAt
+    ): Member {
+        $id = $this->repository->insert(
+            Member::draft(
+                wpUserId: $wpUserId,
+                membershipType: null,
+                email: $email,
+                sourceSystem: $sourceSystem,
+                sourceUserId: $sourceUserId,
+                importedAt: $importedAt,
+            )
+        );
+
+        $member = $this->mustFind( $id );
+
+        $this->history->record( $id, null, $member->status, null, 'import' );
+
+        do_action( 'association_manager_member_status_changed', $member, null, $member->status );
+
+        return $member;
+    }
+
+    /**
+     * Re-stamps an existing member's import provenance (source_system/
+     * source_user_id/imported_at) and refreshes its email if the source
+     * provided one - used both to backfill source tracking onto a member
+     * that already existed (found via findByWpUserId(), never previously
+     * tagged with a source) and to update an already-imported member on
+     * a second import run. Plain field correction, same shape as
+     * updateMembershipType() - no transition check, no status history
+     * entry, since re-importing isn't a membership lifecycle event.
+     */
+    public function applyImport( int $memberId, ?string $email, string $sourceSystem, int $sourceUserId, string $importedAt ): Member {
+        $member = $this->mustFind( $memberId );
+
+        $updated = $member->withImportSource( $sourceSystem, $sourceUserId, $importedAt );
+
+        if ( $email !== null && $email !== '' ) {
+            $updated = new Member(
+                id: $updated->id,
+                uuid: $updated->uuid,
+                wpUserId: $updated->wpUserId,
+                memberNumber: $updated->memberNumber,
+                email: $email,
+                status: $updated->status,
+                membershipType: $updated->membershipType,
+                joinedAt: $updated->joinedAt,
+                expiresAt: $updated->expiresAt,
+                approvedAt: $updated->approvedAt,
+                sourceSystem: $updated->sourceSystem,
+                sourceUserId: $updated->sourceUserId,
+                importedAt: $updated->importedAt,
+            );
+        }
+
+        $this->repository->update( $updated );
+
+        return $updated;
     }
 
     /**

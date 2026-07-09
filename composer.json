@@ -23,7 +23,8 @@
     "szepeviktor/phpstan-wordpress": "^2.0",
     "wp-coding-standards/wpcs": "^3.3",
     "phpcompatibility/phpcompatibility-wp": "^2.1",
-    "dealerdirect/phpcodesniffer-composer-installer": "^1.2"
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.2",
+    "php-stubs/wp-cli-stubs": "^2.12"
   },
   "scripts": {
     "test": "phpunit",

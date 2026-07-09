@@ -54,6 +54,23 @@ final class MemberRepository implements MemberRepositoryInterface {
         return $row ? $this->hydrate( $row ) : null;
     }
 
+    public function findBySource( string $sourceSystem, int $sourceUserId ): ?Member {
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'members' );
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE source_system = %s AND source_user_id = %d",
+                $sourceSystem,
+                $sourceUserId
+            ),
+            ARRAY_A
+        );
+
+        return $row ? $this->hydrate( $row ) : null;
+    }
+
     /**
      * @return Member[]
      */
@@ -156,10 +173,13 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'joined_at'       => $member->joinedAt,
                 'expires_at'      => $member->expiresAt,
                 'approved_at'     => $member->approvedAt,
+                'source_system'   => $member->sourceSystem,
+                'source_user_id'  => $member->sourceUserId,
+                'imported_at'     => $member->importedAt,
                 'created_at'      => $now,
                 'updated_at'      => $now,
             ],
-            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
+            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ]
         );
 
         return (int) $wpdb->insert_id;
@@ -185,10 +205,13 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'joined_at'       => $member->joinedAt,
                 'expires_at'      => $member->expiresAt,
                 'approved_at'     => $member->approvedAt,
+                'source_system'   => $member->sourceSystem,
+                'source_user_id'  => $member->sourceUserId,
+                'imported_at'     => $member->importedAt,
                 'updated_at'      => current_time( 'mysql' ),
             ],
             [ 'id' => $member->id ],
-            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ],
+            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ],
             [ '%d' ]
         );
     }
@@ -237,6 +260,9 @@ final class MemberRepository implements MemberRepositoryInterface {
             joinedAt: $row['joined_at'],
             expiresAt: $row['expires_at'],
             approvedAt: $row['approved_at'],
+            sourceSystem: $row['source_system'] ?? null,
+            sourceUserId: $row['source_user_id'] !== null ? (int) $row['source_user_id'] : null,
+            importedAt: $row['imported_at'] ?? null,
         );
     }
 }

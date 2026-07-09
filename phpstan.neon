@@ -5,6 +5,7 @@ parameters:
         - database
     scanFiles:
         - phpstan-constants.php
+        - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
 
 includes:
     - phpstan-baseline.neon
