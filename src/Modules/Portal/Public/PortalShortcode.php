@@ -21,6 +21,16 @@ final class PortalShortcode {
         add_shortcode( self::TAG, [ $this, 'render' ] );
     }
 
+    /**
+     * Capability check for this feature is two layers, neither of them
+     * current_user_can(): being a "member" is business-domain state,
+     * not a WP role/capability, so there's no capability string that
+     * would mean the right thing here. Layer 1 - is_user_logged_in() -
+     * rules out anonymous visitors. Layer 2 - memberFor() returning
+     * non-null - rules out logged-in WP users who aren't linked to a
+     * Member record (see ADR-020's "link WP account" admin control).
+     * Only a request that passes both ever reaches member data.
+     */
     public function render(): string {
         if ( ! is_user_logged_in() ) {
             return '<p>' . esc_html__( 'Please log in to access the member portal.', 'association-manager' ) . '</p>';

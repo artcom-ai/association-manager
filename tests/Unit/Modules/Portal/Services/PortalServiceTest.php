@@ -47,12 +47,27 @@ final class PortalServiceTest extends TestCase
 
     public function testMemberForReturnsTheLinkedMember(): void
     {
-        $id = $this->members->insert(Member::draft(42, 'individual'));
+        $id = $this->members->insert(Member::draft(42, 'individual', 'jane@example.test'));
 
         $member = $this->service->memberFor(42);
 
         $this->assertNotNull($member);
         $this->assertSame($id, $member->id);
+    }
+
+    public function testMemberForReturnsFullProfileDataForTheDashboardAndProfileViews(): void
+    {
+        $this->members->insert(Member::draft(42, 'individual', 'jane@example.test'));
+
+        $member = $this->service->memberFor(42);
+
+        // Pins down that the Portal's Profile/Status/Summary sections get
+        // real, fully-hydrated data - not just a bare id - since they read
+        // these fields directly off the Member returned here.
+        $this->assertNotNull($member);
+        $this->assertSame('jane@example.test', $member->email);
+        $this->assertSame('individual', $member->membershipType);
+        $this->assertSame('candidate', $member->status);
     }
 
     public function testMemberForReturnsNullWhenNoAccountIsLinked(): void

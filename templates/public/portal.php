@@ -9,8 +9,8 @@ defined('ABSPATH') || exit;
 /** @var \AssociationManager\Modules\Certificates\Domain\Certificate[] $certificates */
 ?>
 <div class="am-portal">
-    <section class="am-portal-dashboard">
-        <h2><?php esc_html_e('Membership', 'association-manager'); ?></h2>
+    <section class="am-portal-profile">
+        <h2><?php esc_html_e('Profile', 'association-manager'); ?></h2>
         <table>
             <tbody>
             <tr>
@@ -18,12 +18,41 @@ defined('ABSPATH') || exit;
                 <td><?php echo esc_html($member->memberNumber ?? '—'); ?></td>
             </tr>
             <tr>
+                <th><?php esc_html_e('Email', 'association-manager'); ?></th>
+                <td><?php echo esc_html($member->email ?? '—'); ?></td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>
+    </section>
+
+    <section class="am-portal-status">
+        <h2><?php esc_html_e('Membership status', 'association-manager'); ?></h2>
+        <table>
+            <tbody>
+            <tr>
                 <th><?php esc_html_e('Status', 'association-manager'); ?></th>
                 <td><?php echo esc_html($member->status); ?></td>
             </tr>
             <tr>
                 <th><?php esc_html_e('Membership type', 'association-manager'); ?></th>
                 <td><?php echo esc_html($member->membershipType ?? '—'); ?></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="am-portal-summary">
+        <h2><?php esc_html_e('Membership summary', 'association-manager'); ?></h2>
+        <table>
+            <tbody>
+            <tr>
+                <th><?php esc_html_e('Joined', 'association-manager'); ?></th>
+                <td><?php echo esc_html($member->joinedAt ?? '—'); ?></td>
+            </tr>
+            <tr>
+                <th><?php esc_html_e('Approved', 'association-manager'); ?></th>
+                <td><?php echo esc_html($member->approvedAt ?? '—'); ?></td>
             </tr>
             <tr>
                 <th><?php esc_html_e('Expires', 'association-manager'); ?></th>
@@ -65,5 +94,10 @@ defined('ABSPATH') || exit;
                 <?php endforeach; ?>
             </ul>
         <?php endif; ?>
+    </section>
+
+    <section class="am-portal-notifications">
+        <h2><?php esc_html_e('Notifications', 'association-manager'); ?></h2>
+        <p><?php esc_html_e('Your notification history will appear here in a future update.', 'association-manager'); ?></p>
     </section>
 </div>
