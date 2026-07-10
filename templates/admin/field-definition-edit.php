@@ -80,11 +80,16 @@ if ($field !== null && $field->options !== null) {
                                 <option value="<?php echo esc_attr($value); ?>" <?php selected($field->type ?? FieldDefinition::TYPE_TEXT, $value); ?>><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <p class="description"><?php esc_html_e('The extra settings below change depending on the type you pick.', 'association-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row"><?php esc_html_e('Required', 'association-manager'); ?></th>
                     <td><label><input type="checkbox" name="required" value="1" <?php checked($field->required ?? false, true); ?> /> <?php esc_html_e('Member must fill this in before submitting for approval', 'association-manager'); ?></label></td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Members list', 'association-manager'); ?></th>
+                    <td><label><input type="checkbox" name="show_in_list" value="1" <?php checked($field->showInList ?? false, true); ?> /> <?php esc_html_e('Show this field as a column on the Members list', 'association-manager'); ?></label></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="am-field-visibility"><?php esc_html_e('Visibility', 'association-manager'); ?></label></th>
@@ -105,14 +110,18 @@ if ($field !== null && $field->options !== null) {
                     <th scope="row"><label for="am-field-help"><?php esc_html_e('Help text', 'association-manager'); ?></label></th>
                     <td><input type="text" id="am-field-help" name="help_text" class="regular-text" value="<?php echo esc_attr($field->helpText ?? ''); ?>" /></td>
                 </tr>
-                <tr>
-                    <th scope="row"><label for="am-field-options"><?php esc_html_e('Options', 'association-manager'); ?></label></th>
+                <tr id="am-field-options-row">
+                    <th scope="row"><?php esc_html_e('Options', 'association-manager'); ?></th>
                     <td>
-                        <textarea id="am-field-options" name="options" class="large-text code" rows="4"><?php echo esc_textarea($optionsText); ?></textarea>
-                        <p class="description"><?php esc_html_e('Only used for Select fields. One option per line, format: value|Label', 'association-manager'); ?></p>
+                        <div id="am-field-options-repeater"></div>
+                        <p>
+                            <button type="button" id="am-field-options-add" class="button"><?php esc_html_e('+ Add option', 'association-manager'); ?></button>
+                        </p>
+                        <textarea id="am-field-options" name="options" class="large-text code" rows="4" style="display:none;"><?php echo esc_textarea($optionsText); ?></textarea>
+                        <p class="description"><?php esc_html_e('Only used for the Select type. Each row is one choice a member picks from.', 'association-manager'); ?></p>
                     </td>
                 </tr>
-                <tr>
+                <tr id="am-field-length-row">
                     <th scope="row"><label for="am-field-min-length"><?php esc_html_e('Min / Max length', 'association-manager'); ?></label></th>
                     <td>
                         <input type="number" id="am-field-min-length" name="min_length" value="<?php echo esc_attr($field->minLength !== null ? (string) $field->minLength : ''); ?>" style="width:100px" />
@@ -121,7 +130,7 @@ if ($field !== null && $field->options !== null) {
                         <p class="description"><?php esc_html_e('Text/Textarea fields only. Leave blank for no limit.', 'association-manager'); ?></p>
                     </td>
                 </tr>
-                <tr>
+                <tr id="am-field-value-row">
                     <th scope="row"><label for="am-field-min-value"><?php esc_html_e('Min / Max value', 'association-manager'); ?></label></th>
                     <td>
                         <input type="number" step="any" id="am-field-min-value" name="min_value" value="<?php echo esc_attr($field->minValue !== null ? (string) $field->minValue : ''); ?>" style="width:100px" />

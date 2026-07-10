@@ -14,6 +14,7 @@ use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\EditMemberPage;
 use AssociationManager\Modules\Members\Admin\MemberBulkActions;
 use AssociationManager\Modules\Members\Admin\MembersPage;
+use AssociationManager\Modules\Members\Domain\MemberRegistrationException;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
 use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
@@ -82,7 +83,7 @@ final class MembersModule implements ModuleInterface {
         $exporter       = new MemberCsvExporter( $service, $fieldRegistry, $fieldValueService );
 
         $adminMenu = $container->get( AdminMenu::class );
-        $adminMenu->register( new MembersPage( $service, $statusRegistry, $planRegistry ) );
+        $adminMenu->register( new MembersPage( $service, $statusRegistry, $planRegistry, $fieldRegistry, $fieldValueService ) );
         $adminMenu->register( new EditMemberPage( $service, $fieldRegistry, $fieldValueService ) );
 
         // EditMemberPage is registered (for routing/capability checks) but
@@ -111,6 +112,27 @@ final class MembersModule implements ModuleInterface {
             'admin_post_association_manager_link_wp_user',
             function () use ( $service ): void {
                 $this->handleLinkWpUser( $service );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_save_member_identity',
+            function () use ( $service ): void {
+                $this->handleSaveMemberIdentity( $service );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_send_password_reset',
+            function () use ( $service ): void {
+                $this->handleSendPasswordReset( $service );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_create_portal_account',
+            function () use ( $service ): void {
+                $this->handleCreatePortalAccount( $service );
             }
         );
 
@@ -229,6 +251,34 @@ final class MembersModule implements ModuleInterface {
         exit;
     }
 
+    private function handleSaveMemberIdentity( MemberService $service ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+
+        check_admin_referer( 'association_manager_save_member_identity_' . $memberId );
+
+        $email     = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+        $firstName = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
+        $lastName  = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+
+        $service->updateIdentity( $memberId, $email, $firstName, $lastName );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+					'page'      => EditMemberPage::SLUG,
+					'id'        => $memberId,
+					'am_notice' => 'identity_saved',
+				],
+				admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
     private function handleLinkWpUser( MemberService $service ): void {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
@@ -258,6 +308,107 @@ final class MembersModule implements ModuleInterface {
 
         wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
         exit;
+    }
+
+    /**
+     * Reset-link only, never a raw password field - the admin never sees
+     * or sets a plaintext password. get_password_reset_key() is core
+     * WordPress (wp-includes/user.php, always loaded) - deliberately not
+     * requiring wp-login.php, whose bottom-of-file switch statement would
+     * execute unrelated login-page-rendering logic if included outside
+     * its normal entry-point context. The resulting URL is the exact
+     * same "wp-login.php?action=rp" link WP's own core reset flow sends.
+     */
+    private function handleSendPasswordReset( MemberService $service ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+
+        check_admin_referer( 'association_manager_send_password_reset_' . $memberId );
+
+        $redirectArgs = [
+			'page' => EditMemberPage::SLUG,
+			'id'   => $memberId,
+		];
+
+        $member = $service->find( $memberId );
+        $user   = $member !== null && $member->wpUserId !== null ? get_userdata( $member->wpUserId ) : false;
+
+        $redirectArgs['am_notice'] = $user !== false && $this->sendPasswordResetEmail( $user )
+            ? 'reset_sent'
+            : 'reset_failed';
+
+        wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    /**
+     * For a member with no WP account yet - creates one with a random,
+     * never-shown password (wp_generate_password()'s whole purpose here
+     * is just to satisfy wp_insert_user()'s required parameter; the
+     * member never learns it, they set their own via the reset email
+     * sent immediately after), links it, then reuses the exact same
+     * reset-email flow as handleSendPasswordReset() so a fresh account
+     * and a reset go through one consistent path.
+     */
+    private function handleCreatePortalAccount( MemberService $service ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+
+        check_admin_referer( 'association_manager_create_portal_account_' . $memberId );
+
+        $redirectArgs = [
+			'page' => EditMemberPage::SLUG,
+			'id'   => $memberId,
+		];
+
+        $email = isset( $_POST['account_email'] ) ? sanitize_email( wp_unslash( $_POST['account_email'] ) ) : '';
+
+        try {
+            $member = $service->createPortalAccountFor( $memberId, $email );
+        } catch ( MemberRegistrationException ) {
+            $redirectArgs['am_notice'] = 'account_invalid';
+            wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
+        $user                      = $member->wpUserId !== null ? get_userdata( $member->wpUserId ) : false;
+        $redirectArgs['am_notice'] = $user !== false && $this->sendPasswordResetEmail( $user )
+            ? 'account_created'
+            : 'account_created_email_failed';
+
+        wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
+    private function sendPasswordResetEmail( \WP_User $user ): bool {
+        $key = get_password_reset_key( $user );
+
+        if ( is_wp_error( $key ) ) {
+            return false;
+        }
+
+        $resetUrl = network_site_url(
+            'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ),
+            'login'
+        );
+
+        $message = sprintf(
+            /* translators: %s: password reset URL */
+            __( "Someone requested a password reset for your account.\n\nSet a new password here: %s\n\nIf you did not request this, you can ignore this email.", 'association-manager' ),
+            $resetUrl
+        );
+
+        return wp_mail(
+            $user->user_email,
+            __( 'Set your password', 'association-manager' ),
+            $message
+        );
     }
 
     private function handleExportMembers( MemberCsvExporter $exporter ): void {
@@ -336,7 +487,9 @@ final class MembersModule implements ModuleInterface {
                         ( $data['joined_at'] ?? '' ) !== '' ? (string) $data['joined_at'] : null,
                         ( $data['expires_at'] ?? '' ) !== '' ? (string) $data['expires_at'] : null,
                         get_current_user_id() ?: null,
-                        ( $data['email'] ?? '' ) !== '' ? sanitize_text_field( (string) $data['email'] ) : null
+                        ( $data['email'] ?? '' ) !== '' ? sanitize_text_field( (string) $data['email'] ) : null,
+                        ( $data['first_name'] ?? '' ) !== '' ? sanitize_text_field( (string) $data['first_name'] ) : null,
+                        ( $data['last_name'] ?? '' ) !== '' ? sanitize_text_field( (string) $data['last_name'] ) : null
                     );
 
                     if ( $result['action'] === 'created' ) {

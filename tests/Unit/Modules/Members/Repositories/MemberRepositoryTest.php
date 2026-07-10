@@ -94,6 +94,21 @@ final class MemberRepositoryTest extends TestCase
         $this->assertSame(MemberStatus::ACTIVE, $result->items[0]->status);
     }
 
+    public function testInsertAndUpdateRoundTripName(): void
+    {
+        $id = $this->repository->insert(Member::draft(null, null, firstName: 'Maria', lastName: 'Papadopoulou'));
+
+        $found = $this->repository->find($id);
+        $this->assertSame('Maria', $found->firstName);
+        $this->assertSame('Papadopoulou', $found->lastName);
+
+        $this->repository->update($found->withIdentity(null, 'Anna', null));
+
+        $updated = $this->repository->find($id);
+        $this->assertSame('Anna', $updated->firstName);
+        $this->assertSame('Papadopoulou', $updated->lastName, 'update() must not lose a field withIdentity() left unchanged');
+    }
+
     public function testFindExpiredCandidatesOnlyReturnsActiveMembersPastExpiry(): void
     {
         $this->setNow('2026-06-01 00:00:00');

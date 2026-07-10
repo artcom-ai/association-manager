@@ -34,6 +34,7 @@ final class FieldDefinitionRepositoryTest extends TestCase
             helpText: 'Pick one',
             order: 10,
             visibility: FieldDefinition::VISIBILITY_PRIVATE,
+            showInList: true,
         );
 
         $this->repository->save('member', $field);
@@ -52,6 +53,17 @@ final class FieldDefinitionRepositoryTest extends TestCase
         $this->assertSame('Pick one', $found->helpText);
         $this->assertSame(10, $found->order);
         $this->assertSame(FieldDefinition::VISIBILITY_PRIVATE, $found->visibility);
+        $this->assertTrue($found->showInList);
+    }
+
+    public function testShowInListDefaultsToFalse(): void
+    {
+        $this->repository->save('member', new FieldDefinition(key: 'notes', label: 'Notes', type: FieldDefinition::TYPE_TEXT));
+
+        $found = $this->repository->find('member', 'notes');
+
+        $this->assertNotNull($found);
+        $this->assertFalse($found->showInList);
     }
 
     public function testSaveWithoutOptionalPropertiesRoundTripsNulls(): void

@@ -22,7 +22,19 @@ final class Member {
         public readonly ?string $sourceSystem = null,
         public readonly ?int $sourceUserId = null,
         public readonly ?string $importedAt = null,
+        public readonly ?string $firstName = null,
+        public readonly ?string $lastName = null,
     ) {
+    }
+
+    /**
+     * Joined first+last, trimmed - "" (not null) when neither part is
+     * set, so callers can treat the empty-string case uniformly with
+     * every other optional display field on this class (e.g. email/
+     * memberNumber, which are rendered as "—" by the caller, not here).
+     */
+    public function fullName(): string {
+        return trim( trim( (string) $this->firstName ) . ' ' . trim( (string) $this->lastName ) );
     }
 
     /**
@@ -42,7 +54,9 @@ final class Member {
         ?string $email = null,
         ?string $sourceSystem = null,
         ?int $sourceUserId = null,
-        ?string $importedAt = null
+        ?string $importedAt = null,
+        ?string $firstName = null,
+        ?string $lastName = null
     ): self {
         return new self(
             id: null,
@@ -58,6 +72,8 @@ final class Member {
             sourceSystem: $sourceSystem,
             sourceUserId: $sourceUserId,
             importedAt: $importedAt,
+            firstName: $firstName,
+            lastName: $lastName,
         );
     }
 
@@ -80,6 +96,8 @@ final class Member {
             sourceSystem: $this->sourceSystem,
             sourceUserId: $this->sourceUserId,
             importedAt: $this->importedAt,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
         );
     }
 
@@ -98,6 +116,8 @@ final class Member {
             sourceSystem: $this->sourceSystem,
             sourceUserId: $this->sourceUserId,
             importedAt: $this->importedAt,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
         );
     }
 
@@ -123,6 +143,35 @@ final class Member {
             sourceSystem: $sourceSystem,
             sourceUserId: $sourceUserId,
             importedAt: $importedAt,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
+        );
+    }
+
+    /**
+     * Admin-editable identity fields, all three together - used both by
+     * the Edit Member "Identity" section and by applyImport() refreshing
+     * email/name from a re-run source. A null argument means "leave
+     * unchanged" (not "clear"), matching applyImport()'s existing
+     * only-overwrite-if-provided semantics for email.
+     */
+    public function withIdentity( ?string $email, ?string $firstName, ?string $lastName ): self {
+        return new self(
+            id: $this->id,
+            uuid: $this->uuid,
+            wpUserId: $this->wpUserId,
+            memberNumber: $this->memberNumber,
+            email: $email ?? $this->email,
+            status: $this->status,
+            membershipType: $this->membershipType,
+            joinedAt: $this->joinedAt,
+            expiresAt: $this->expiresAt,
+            approvedAt: $this->approvedAt,
+            sourceSystem: $this->sourceSystem,
+            sourceUserId: $this->sourceUserId,
+            importedAt: $this->importedAt,
+            firstName: $firstName ?? $this->firstName,
+            lastName: $lastName ?? $this->lastName,
         );
     }
 }

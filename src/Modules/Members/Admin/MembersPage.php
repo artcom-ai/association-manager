@@ -6,6 +6,8 @@ namespace AssociationManager\Modules\Members\Admin;
 
 use AssociationManager\Core\Admin\AdminPageInterface;
 use AssociationManager\Core\Admin\DashboardPage;
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
 use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Services\MemberService;
@@ -20,6 +22,8 @@ final class MembersPage implements AdminPageInterface {
         private readonly MemberService $service,
         private readonly MemberStatusRegistry $statuses,
         private readonly MembershipPlanRegistry $plans,
+        private readonly FieldRegistry $fieldRegistry,
+        private readonly FieldValueService $fieldValueService,
     ) {
     }
 
@@ -45,7 +49,7 @@ final class MembersPage implements AdminPageInterface {
 
     public function render(): void {
         $bulkActions = new MemberBulkActions( $this->service );
-        $table       = new MembersListTable( $this->service, $this->statuses, $this->plans, $bulkActions );
+        $table       = new MembersListTable( $this->service, $this->statuses, $this->plans, $bulkActions, $this->fieldRegistry, $this->fieldValueService );
         $table->prepare_items();
 
         $userId          = get_current_user_id();

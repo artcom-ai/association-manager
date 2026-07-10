@@ -53,4 +53,49 @@ final class MemberTest extends TestCase
         $this->assertSame('2027-01-01 00:00:00', $renewed->expiresAt);
         $this->assertSame($member->status, $renewed->status);
     }
+
+    public function testFullNameJoinsFirstAndLast(): void
+    {
+        $member = Member::draft(null, null, firstName: 'Maria', lastName: 'Papadopoulou');
+
+        $this->assertSame('Maria Papadopoulou', $member->fullName());
+    }
+
+    public function testFullNameIsEmptyStringWhenNeitherPartIsSet(): void
+    {
+        $member = Member::draft(null, null);
+
+        $this->assertSame('', $member->fullName());
+    }
+
+    public function testWithStatusPreservesName(): void
+    {
+        $member = Member::draft(null, null, firstName: 'Maria', lastName: 'Papadopoulou');
+
+        $activated = $member->withStatus(MemberStatus::ACTIVE);
+
+        $this->assertSame('Maria', $activated->firstName);
+        $this->assertSame('Papadopoulou', $activated->lastName);
+    }
+
+    public function testWithIdentityOverwritesProvidedFieldsOnly(): void
+    {
+        $member = Member::draft(null, null, email: 'old@example.com', firstName: 'Maria', lastName: 'Papadopoulou');
+
+        $updated = $member->withIdentity('new@example.com', null, null);
+
+        $this->assertSame('new@example.com', $updated->email);
+        $this->assertSame('Maria', $updated->firstName, 'null means leave unchanged, not clear');
+        $this->assertSame('Papadopoulou', $updated->lastName);
+    }
+
+    public function testWithIdentityCanClearWithEmptyString(): void
+    {
+        $member = Member::draft(null, null, firstName: 'Maria', lastName: 'Papadopoulou');
+
+        $updated = $member->withIdentity(null, '', '');
+
+        $this->assertSame('', $updated->firstName, 'empty string is an explicit clear, unlike null');
+        $this->assertSame('', $updated->lastName);
+    }
 }

@@ -37,6 +37,8 @@ final class MigrationLoaderTest extends TestCase
                 '017_seed_member_submitted_for_approval_template',
                 '018_create_field_definitions_table',
                 '019_create_field_mappings_table',
+                '020_add_name_to_members_table',
+                '021_add_show_in_list_to_field_definitions_table',
             ],
             $ids
         );

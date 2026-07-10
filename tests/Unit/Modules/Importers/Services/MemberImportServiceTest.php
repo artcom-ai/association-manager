@@ -150,6 +150,42 @@ final class MemberImportServiceTest extends TestCase
         $this->assertSame('Cardiology', $values['specialty']);
     }
 
+    public function testCommitCarriesFirstAndLastNameThroughFromTheImportRow(): void
+    {
+        $source = new FakeImportSource([
+            new ImportRow(
+                sourceUserId: 42,
+                wpUserId: 42,
+                email: 'jane@example.test',
+                rawFields: ['mepr-specialty' => 'Cardiology'],
+                firstName: 'Jane',
+                lastName: 'Doe',
+            ),
+        ]);
+
+        $this->importService->run($source, commit: true);
+
+        $member = $this->members->all()[0];
+        $this->assertSame('Jane', $member->firstName);
+        $this->assertSame('Doe', $member->lastName);
+    }
+
+    public function testReimportRefreshesNameWhenSourceProvidesIt(): void
+    {
+        $first = new FakeImportSource([
+            new ImportRow(sourceUserId: 42, wpUserId: 42, email: 'jane@example.test', rawFields: ['mepr-specialty' => 'Cardiology'], firstName: 'Jane', lastName: 'Doe'),
+        ]);
+        $this->importService->run($first, commit: true);
+
+        $renamed = new FakeImportSource([
+            new ImportRow(sourceUserId: 42, wpUserId: 42, email: 'jane@example.test', rawFields: ['mepr-specialty' => 'Cardiology'], firstName: 'Janet', lastName: 'Doe'),
+        ]);
+        $this->importService->run($renamed, commit: true);
+
+        $member = $this->members->all()[0];
+        $this->assertSame('Janet', $member->firstName);
+    }
+
     public function testRunningTheImporterTwiceDoesNotDuplicateMembers(): void
     {
         $source = new FakeImportSource([

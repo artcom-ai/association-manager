@@ -115,6 +115,28 @@ final class MemberServiceTest extends TestCase
         $this->assertSame(55, $relinked->wpUserId);
     }
 
+    public function testLinkWpUserPreservesName(): void
+    {
+        $member = $this->service->createMember(null, 'individual', firstName: 'Maria', lastName: 'Papadopoulou');
+
+        $linked = $this->service->linkWpUser($member->id, 55);
+
+        $this->assertSame('Maria', $linked->firstName);
+        $this->assertSame('Papadopoulou', $linked->lastName);
+    }
+
+    public function testUpdateIdentitySavesEmailAndName(): void
+    {
+        $member = $this->service->createMember(null, 'individual');
+
+        $updated = $this->service->updateIdentity($member->id, 'jane@example.test', 'Jane', 'Doe');
+
+        $this->assertSame('jane@example.test', $updated->email);
+        $this->assertSame('Jane', $updated->firstName);
+        $this->assertSame('Doe', $updated->lastName);
+        $this->assertSame('jane@example.test', $this->service->find($member->id)->email);
+    }
+
     public function testActivateSuspendReinstateArchiveLifecycle(): void
     {
         $member = $this->service->createMember(null, 'individual');
@@ -332,5 +354,35 @@ final class MemberServiceTest extends TestCase
             $this->assertArrayHasKey('first_name', $e->errors());
             $this->assertArrayHasKey('last_name', $e->errors());
         }
+    }
+
+    public function testCreatePortalAccountForLinksANewWpUserWithoutAnAdminSuppliedPassword(): void
+    {
+        $member = $this->service->createMember(null, 'individual', firstName: 'Jane', lastName: 'Doe');
+
+        $updated = $this->service->createPortalAccountFor($member->id, 'jane@example.test');
+
+        $this->assertNotNull($updated->wpUserId);
+        $wpUser = get_userdata($updated->wpUserId);
+        $this->assertNotFalse($wpUser);
+        $this->assertSame('jane@example.test', $wpUser->user_email);
+        $this->assertSame($updated->wpUserId, $this->service->find($member->id)->wpUserId);
+    }
+
+    public function testCreatePortalAccountForRejectsAnInvalidEmail(): void
+    {
+        $member = $this->service->createMember(null, 'individual');
+
+        $this->expectException(\AssociationManager\Modules\Members\Domain\MemberRegistrationException::class);
+        $this->service->createPortalAccountFor($member->id, 'not-an-email');
+    }
+
+    public function testCreatePortalAccountForRejectsADuplicateEmail(): void
+    {
+        $this->service->registerNewMember('jane@example.test', 'a-real-password', 'Jane', 'Doe');
+        $second = $this->service->createMember(null, 'individual');
+
+        $this->expectException(\AssociationManager\Modules\Members\Domain\MemberRegistrationException::class);
+        $this->service->createPortalAccountFor($second->id, 'jane@example.test');
     }
 }

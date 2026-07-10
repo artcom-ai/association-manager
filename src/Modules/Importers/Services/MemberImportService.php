@@ -117,8 +117,8 @@ final class MemberImportService {
 
         if ( $commit ) {
             $member = $existing === null
-                ? $this->memberService->createFromImport( $row->wpUserId, $row->email, $sourceSystem, $row->sourceUserId, $importedAt )
-                : $this->memberService->applyImport( $existing->requireId(), $row->email, $sourceSystem, $row->sourceUserId, $importedAt );
+                ? $this->memberService->createFromImport( $row->wpUserId, $row->email, $sourceSystem, $row->sourceUserId, $importedAt, $row->firstName, $row->lastName )
+                : $this->memberService->applyImport( $existing->requireId(), $row->email, $sourceSystem, $row->sourceUserId, $importedAt, $row->firstName, $row->lastName );
 
             $memberId = $member->requireId();
 

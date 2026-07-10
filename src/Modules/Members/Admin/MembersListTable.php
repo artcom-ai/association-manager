@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Members\Admin;
 
+use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
 use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
@@ -21,11 +23,25 @@ final class MembersListTable extends \WP_List_Table {
 
     private const PER_PAGE = 20;
 
+    private const ENTITY_TYPE = 'member';
+
+    /**
+     * Populated by prepare_items() before display - one custom-field
+     * lookup per visible row (at most PER_PAGE), not per column, since
+     * FieldValueService::valuesFor() already returns every field's
+     * value for a member in one call.
+     *
+     * @var array<int, array<string, string>>
+     */
+    private array $customFieldValues = [];
+
     public function __construct(
         private readonly MemberService $service,
         private readonly MemberStatusRegistry $statuses,
         private readonly MembershipPlanRegistry $plans,
         private readonly MemberBulkActions $bulkActions,
+        private readonly FieldRegistry $fieldRegistry,
+        private readonly FieldValueService $fieldValueService,
     ) {
         parent::__construct(
             [
@@ -40,14 +56,33 @@ final class MembersListTable extends \WP_List_Table {
      * @return array<string, string>
      */
     public function get_columns(): array {
-        return [
+        $columns = [
             'cb'              => '<input type="checkbox" />',
+            'name'            => __( 'Name', 'association-manager' ),
             'member_number'   => __( 'Member #', 'association-manager' ),
             'email'           => __( 'Email', 'association-manager' ),
             'status'          => __( 'Status', 'association-manager' ),
             'membership_type' => __( 'Membership type', 'association-manager' ),
             'expires_at'      => __( 'Expires', 'association-manager' ),
         ];
+
+        foreach ( $this->fieldsShownInList() as $field ) {
+            $columns[ 'field_' . $field->key ] = $field->label;
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @return \AssociationManager\Core\Fields\FieldDefinition[]
+     */
+    private function fieldsShownInList(): array {
+        return array_values(
+            array_filter(
+                $this->fieldRegistry->forEntityType( self::ENTITY_TYPE ),
+                static fn ( $field ): bool => $field->showInList
+            )
+        );
     }
 
     /**
@@ -82,7 +117,15 @@ final class MembersListTable extends \WP_List_Table {
      * @param Member $item
      */
     public function column_default( $item, $column_name ): string {
+        if ( str_starts_with( $column_name, 'field_' ) ) {
+            $fieldKey = substr( $column_name, strlen( 'field_' ) );
+            $value    = $this->customFieldValues[ $item->requireId() ][ $fieldKey ] ?? null;
+
+            return esc_html( $value !== null && $value !== '' ? $value : '—' );
+        }
+
         return match ( $column_name ) {
+            'name' => esc_html( $item->fullName() !== '' ? $item->fullName() : '—' ),
             'email' => esc_html( $item->email ?? '—' ),
             'status' => esc_html( $item->status ),
             'membership_type' => esc_html( $item->membershipType ?? '—' ),
@@ -170,6 +213,14 @@ final class MembersListTable extends \WP_List_Table {
         $result = $this->service->search( $criteria, $params );
 
         $this->items = $result->items;
+
+        $this->customFieldValues = [];
+
+        if ( $this->fieldsShownInList() !== [] ) {
+            foreach ( $this->items as $member ) {
+                $this->customFieldValues[ $member->requireId() ] = $this->fieldValueService->valuesFor( self::ENTITY_TYPE, $member->requireId() );
+            }
+        }
 
         $this->set_pagination_args(
             [

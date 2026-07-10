@@ -39,6 +39,7 @@ final class FieldDefinition {
         public readonly ?string $helpText = null,
         public readonly int $order = 0,
         public readonly string $visibility = self::VISIBILITY_ADMIN,
+        public readonly bool $showInList = false,
     ) {
     }
 

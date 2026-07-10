@@ -83,9 +83,10 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
             'help_text'     => $field->helpText,
             'display_order' => $field->order,
             'visibility'    => $field->visibility,
+            'show_in_list'  => $field->showInList ? 1 : 0,
             'updated_at'    => $now,
         ];
-        $formats = [ '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%f', '%f', '%s', '%d', '%s', '%s' ];
+        $formats = [ '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%f', '%f', '%s', '%d', '%s', '%d', '%s' ];
 
         $existing = $this->find( $entityType, $field->key );
 
@@ -149,6 +150,7 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
             helpText: $row['help_text'],
             order: (int) $row['display_order'],
             visibility: $row['visibility'],
+            showInList: (bool) ( $row['show_in_list'] ?? false ),
         );
     }
 }

@@ -26,6 +26,8 @@ final class ImportRow {
         public readonly ?int $wpUserId,
         public readonly ?string $email,
         public readonly array $rawFields,
+        public readonly ?string $firstName = null,
+        public readonly ?string $lastName = null,
     ) {
     }
 }

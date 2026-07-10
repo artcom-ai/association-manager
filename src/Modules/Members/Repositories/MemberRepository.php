@@ -168,6 +168,8 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'uuid'            => wp_generate_uuid4(),
                 'member_number'   => $member->memberNumber,
                 'email'           => $member->email,
+                'first_name'      => $member->firstName,
+                'last_name'       => $member->lastName,
                 'status'          => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at'       => $member->joinedAt,
@@ -179,7 +181,7 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'created_at'      => $now,
                 'updated_at'      => $now,
             ],
-            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ]
+            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ]
         );
 
         return (int) $wpdb->insert_id;
@@ -200,6 +202,8 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'wp_user_id'      => $member->wpUserId,
                 'member_number'   => $member->memberNumber,
                 'email'           => $member->email,
+                'first_name'      => $member->firstName,
+                'last_name'       => $member->lastName,
                 'status'          => $member->status,
                 'membership_type' => $member->membershipType,
                 'joined_at'       => $member->joinedAt,
@@ -211,7 +215,7 @@ final class MemberRepository implements MemberRepositoryInterface {
                 'updated_at'      => current_time( 'mysql' ),
             ],
             [ 'id' => $member->id ],
-            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ],
+            [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ],
             [ '%d' ]
         );
     }
@@ -263,6 +267,8 @@ final class MemberRepository implements MemberRepositoryInterface {
             sourceSystem: $row['source_system'] ?? null,
             sourceUserId: $row['source_user_id'] !== null ? (int) $row['source_user_id'] : null,
             importedAt: $row['imported_at'] ?? null,
+            firstName: $row['first_name'] ?? null,
+            lastName: $row['last_name'] ?? null,
         );
     }
 }

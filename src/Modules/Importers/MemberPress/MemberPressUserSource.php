@@ -45,7 +45,12 @@ final class MemberPressUserSource implements ImportSourceInterface {
      * @return ImportRow[]
      */
     public function fetchRows(): array {
-        $users = get_users( [ 'fields' => [ 'ID', 'user_email' ] ] );
+        // Full WP_User objects (not the ['ID','user_email'] field
+        // subset) so ->first_name/->last_name are available - both are
+        // magic properties backed by usermeta, already populated by
+        // MemberPress' own signup/profile form for every real member,
+        // not something this importer needs its own mapping for.
+        $users = get_users();
 
         $rows = [];
 
@@ -61,6 +66,8 @@ final class MemberPressUserSource implements ImportSourceInterface {
                 wpUserId: (int) $user->ID,
                 email: $user->user_email !== '' ? $user->user_email : null,
                 rawFields: $rawFields,
+                firstName: $user->first_name !== '' ? $user->first_name : null,
+                lastName: $user->last_name !== '' ? $user->last_name : null,
             );
         }
 

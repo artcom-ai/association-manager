@@ -29,8 +29,16 @@ final class MemberService {
     ) {
     }
 
-    public function createMember( ?int $wpUserId, ?string $membershipType, ?string $email = null ): Member {
-        $id = $this->repository->insert( Member::draft( $wpUserId, $membershipType, $email ) );
+    public function createMember(
+        ?int $wpUserId,
+        ?string $membershipType,
+        ?string $email = null,
+        ?string $firstName = null,
+        ?string $lastName = null
+    ): Member {
+        $id = $this->repository->insert(
+            Member::draft( $wpUserId, $membershipType, $email, firstName: $firstName, lastName: $lastName )
+        );
 
         $member = $this->mustFind( $id );
 
@@ -90,7 +98,7 @@ final class MemberService {
             throw new MemberRegistrationException( [ 'email' => [ $wpUserId->get_error_message() ] ] );
         }
 
-        return $this->createMember( $wpUserId, null, $email );
+        return $this->createMember( $wpUserId, null, $email, $firstName, $lastName );
     }
 
     public function activateMember( int $memberId, ?int $changedBy = null ): Member {
@@ -203,6 +211,8 @@ final class MemberService {
             sourceSystem: $member->sourceSystem,
             sourceUserId: $member->sourceUserId,
             importedAt: $member->importedAt,
+            firstName: $member->firstName,
+            lastName: $member->lastName,
         );
 
         $this->repository->update( $updated );
@@ -227,7 +237,9 @@ final class MemberService {
         ?string $joinedAt,
         ?string $expiresAt,
         ?int $importedBy = null,
-        ?string $email = null
+        ?string $email = null,
+        ?string $firstName = null,
+        ?string $lastName = null
     ): array {
         if ( $status !== null && $this->statuses->get( $status ) === null ) {
             throw new \InvalidArgumentException( "Unknown status \"{$status}\"." );
@@ -247,6 +259,8 @@ final class MemberService {
                 joinedAt: $joinedAt,
                 expiresAt: $expiresAt,
                 approvedAt: null,
+                firstName: $firstName,
+                lastName: $lastName,
             );
 
             $id      = $this->repository->insert( $draft );
@@ -274,6 +288,8 @@ final class MemberService {
             sourceSystem: $existing->sourceSystem,
             sourceUserId: $existing->sourceUserId,
             importedAt: $existing->importedAt,
+            firstName: $firstName ?? $existing->firstName,
+            lastName: $lastName ?? $existing->lastName,
         );
 
         $this->repository->update( $updated );
@@ -354,7 +370,9 @@ final class MemberService {
         ?string $email,
         string $sourceSystem,
         int $sourceUserId,
-        string $importedAt
+        string $importedAt,
+        ?string $firstName = null,
+        ?string $lastName = null
     ): Member {
         $id = $this->repository->insert(
             Member::draft(
@@ -364,6 +382,8 @@ final class MemberService {
                 sourceSystem: $sourceSystem,
                 sourceUserId: $sourceUserId,
                 importedAt: $importedAt,
+                firstName: $firstName,
+                lastName: $lastName,
             )
         );
 
@@ -386,28 +406,76 @@ final class MemberService {
      * updateMembershipType() - no transition check, no status history
      * entry, since re-importing isn't a membership lifecycle event.
      */
-    public function applyImport( int $memberId, ?string $email, string $sourceSystem, int $sourceUserId, string $importedAt ): Member {
+    public function applyImport(
+        int $memberId,
+        ?string $email,
+        string $sourceSystem,
+        int $sourceUserId,
+        string $importedAt,
+        ?string $firstName = null,
+        ?string $lastName = null
+    ): Member {
         $member = $this->mustFind( $memberId );
 
         $updated = $member->withImportSource( $sourceSystem, $sourceUserId, $importedAt );
 
-        if ( $email !== null && $email !== '' ) {
-            $updated = new Member(
-                id: $updated->id,
-                uuid: $updated->uuid,
-                wpUserId: $updated->wpUserId,
-                memberNumber: $updated->memberNumber,
-                email: $email,
-                status: $updated->status,
-                membershipType: $updated->membershipType,
-                joinedAt: $updated->joinedAt,
-                expiresAt: $updated->expiresAt,
-                approvedAt: $updated->approvedAt,
-                sourceSystem: $updated->sourceSystem,
-                sourceUserId: $updated->sourceUserId,
-                importedAt: $updated->importedAt,
-            );
+        $updated = $updated->withIdentity(
+            $email !== null && $email !== '' ? $email : null,
+            $firstName !== null && $firstName !== '' ? $firstName : null,
+            $lastName !== null && $lastName !== '' ? $lastName : null,
+        );
+
+        $this->repository->update( $updated );
+
+        return $updated;
+    }
+
+    /**
+     * Admin-facing counterpart to registerNewMember() for a member who
+     * already exists (imported/manually created) but has no WP account
+     * yet - creates one with a random, never-returned password
+     * (wp_generate_password() only exists to satisfy wp_insert_user()'s
+     * required parameter; the member sets their own via the password
+     * reset email the caller is expected to send immediately after) and
+     * links it via linkWpUser(). Throws the same MemberRegistrationException
+     * shape as registerNewMember() so a caller can handle both the same way.
+     */
+    public function createPortalAccountFor( int $memberId, string $email ): Member {
+        $this->mustFind( $memberId );
+
+        if ( ! is_email( $email ) ) {
+            throw new MemberRegistrationException( [ 'email' => [ __( 'Please enter a valid email address.', 'association-manager' ) ] ] );
         }
+
+        if ( email_exists( $email ) ) {
+            throw new MemberRegistrationException( [ 'email' => [ __( 'An account with this email already exists.', 'association-manager' ) ] ] );
+        }
+
+        $wpUserId = wp_insert_user(
+            [
+				'user_login' => $this->generateUsername( $email ),
+				'user_email' => $email,
+				'user_pass'  => wp_generate_password( 24 ),
+				'role'       => 'subscriber',
+			]
+        );
+
+        if ( is_wp_error( $wpUserId ) ) {
+            throw new MemberRegistrationException( [ 'email' => [ $wpUserId->get_error_message() ] ] );
+        }
+
+        return $this->linkWpUser( $memberId, $wpUserId );
+    }
+
+    /**
+     * Admin-editable identity fields on the Edit Member page - unlike
+     * applyImport() (which only ever refreshes from a source and never
+     * clears), an explicit "" here (a form field the admin cleared) does
+     * overwrite, since this is a direct, intentional edit.
+     */
+    public function updateIdentity( int $memberId, ?string $email, ?string $firstName, ?string $lastName ): Member {
+        $member  = $this->mustFind( $memberId );
+        $updated = $member->withIdentity( $email, $firstName, $lastName );
 
         $this->repository->update( $updated );
 

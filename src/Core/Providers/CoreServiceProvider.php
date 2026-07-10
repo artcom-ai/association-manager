@@ -104,6 +104,27 @@ final class CoreServiceProvider implements ServiceProviderInterface {
 				$this->handleDeleteFieldDefinition( $fieldDefinitions, $fieldValues );
 			}
         );
+
+        add_action(
+            'admin_enqueue_scripts',
+            // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- required by the admin_enqueue_scripts hook signature.
+            static function ( string $hookSuffix ): void {
+				$isFieldsPage = ( $_GET['page'] ?? '' ) === FieldDefinitionsPage::SLUG;
+				$isEditView   = isset( $_GET['new'] ) || isset( $_GET['field_key'] );
+
+				if ( ! $isFieldsPage || ! $isEditView ) {
+					return;
+				}
+
+				wp_enqueue_script(
+                    'association-manager-field-definition-editor',
+                    AM_PLUGIN_URL . 'assets/js/field-definition-editor.js',
+                    [],
+                    AM_PLUGIN_VERSION,
+                    true
+				);
+			}
+        );
     }
 
     private function loadFieldDefinitionsIntoRegistry( Container $container ): void {
@@ -169,6 +190,7 @@ final class CoreServiceProvider implements ServiceProviderInterface {
             helpText: isset( $_POST['help_text'] ) && $_POST['help_text'] !== '' ? sanitize_text_field( wp_unslash( $_POST['help_text'] ) ) : null,
             order: isset( $_POST['order'] ) ? (int) $_POST['order'] : 0,
             visibility: $visibility,
+            showInList: isset( $_POST['show_in_list'] ),
         );
 
         $fields->save( FieldDefinitionsPage::ENTITY_TYPE, $field );

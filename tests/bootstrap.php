@@ -163,6 +163,7 @@ function wp_insert_user($userdata) {
     ];
     return $id;
 }
+function wp_generate_password($length = 12, $specialChars = true, $extraSpecialChars = false) { return str_repeat('x', $length); }
 function wp_set_current_user($id) {
     $GLOBALS['__am_test_current_user_id'] = $id;
     return $GLOBALS['__am_test_users'][$id] ?? null;
