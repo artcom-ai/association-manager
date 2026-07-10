@@ -6,10 +6,12 @@ namespace AssociationManager\Modules\Certificates;
 
 use AssociationManager\Core\Admin\AdminMenu;
 use AssociationManager\Core\Container;
+use AssociationManager\Core\Media\AttachmentStreamer;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Modules\Certificates\Admin\CertificatesPage;
 use AssociationManager\Modules\Certificates\Admin\CertificateTemplatesPage;
+use AssociationManager\Modules\Certificates\Domain\CertificateStatus;
 use AssociationManager\Modules\Certificates\Domain\CertificateTemplate;
 use AssociationManager\Modules\Certificates\Repositories\CertificateRepository;
 use AssociationManager\Modules\Certificates\Repositories\CertificateRepositoryInterface;
@@ -55,9 +57,11 @@ final class CertificatesModule implements ModuleInterface {
     }
 
     public function boot( Container $container ): void {
-        $templates = $container->get( CertificateTemplateRepositoryInterface::class );
-        $service   = $container->get( CertificateService::class );
-        $members   = $container->get( MemberRepositoryInterface::class );
+        $templates    = $container->get( CertificateTemplateRepositoryInterface::class );
+        $service      = $container->get( CertificateService::class );
+        $members      = $container->get( MemberRepositoryInterface::class );
+        $certificates = $container->get( CertificateRepositoryInterface::class );
+        $streamer     = $container->get( AttachmentStreamer::class );
 
         $adminMenu = $container->get( AdminMenu::class );
         $adminMenu->register( new CertificateTemplatesPage( $templates ) );
@@ -88,6 +92,20 @@ final class CertificatesModule implements ModuleInterface {
             'admin_post_association_manager_revoke_certificate',
             function () use ( $service ): void {
                 $this->handleRevokeCertificate( $service );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_download_certificate',
+            function () use ( $certificates, $streamer ): void {
+                $this->handleDownloadCertificate( $certificates, $streamer );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_download_own_certificate',
+            function () use ( $certificates, $members, $streamer ): void {
+                $this->handleDownloadOwnCertificate( $certificates, $members, $streamer );
             }
         );
 
@@ -215,5 +233,65 @@ final class CertificatesModule implements ModuleInterface {
 
         wp_safe_redirect( add_query_arg( $redirectArgs, admin_url( 'admin.php' ) ) );
         exit;
+    }
+
+    /**
+     * Admin-only download, any status (drafts included - the admin
+     * needs to preview a draft before deciding whether to Issue it).
+     * Same Module-owns-its-own-authorization split as field files
+     * (ADR-023 addendum) - Core\Media\AttachmentStreamer has no idea
+     * what a "certificate" is, only how to stream an attachment.
+     */
+    private function handleDownloadCertificate( CertificateRepositoryInterface $certificates, AttachmentStreamer $streamer ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $certificateId = isset( $_GET['certificate_id'] ) ? (int) $_GET['certificate_id'] : 0;
+
+        check_admin_referer( 'association_manager_download_certificate_' . $certificateId );
+
+        $certificate = $certificates->find( $certificateId );
+
+        if ( $certificate === null ) {
+            wp_die( esc_html__( 'Certificate not found.', 'association-manager' ), '', [ 'response' => 404 ] );
+        }
+
+        $streamer->stream( $certificate->wpAttachmentId );
+    }
+
+    /**
+     * Member-facing download - unlike the admin download above, only
+     * an issued certificate is ever reachable, and only by the member
+     * it was issued to (resolved via the requesting WP user's own
+     * linked Member record, same ownership check the Portal itself
+     * uses for its own access gate).
+     */
+    private function handleDownloadOwnCertificate(
+        CertificateRepositoryInterface $certificates,
+        MemberRepositoryInterface $members,
+        AttachmentStreamer $streamer
+    ): void {
+        if ( ! is_user_logged_in() ) {
+            wp_die( esc_html__( 'You must be logged in.', 'association-manager' ) );
+        }
+
+        $certificateId = isset( $_GET['certificate_id'] ) ? (int) $_GET['certificate_id'] : 0;
+
+        check_admin_referer( 'association_manager_download_own_certificate_' . $certificateId );
+
+        $certificate = $certificates->find( $certificateId );
+
+        if ( $certificate === null || $certificate->status !== CertificateStatus::ISSUED ) {
+            wp_die( esc_html__( 'Certificate not found.', 'association-manager' ), '', [ 'response' => 404 ] );
+        }
+
+        $member = $members->findByWpUserId( get_current_user_id() );
+
+        if ( $member === null || $member->requireId() !== $certificate->memberId ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ), '', [ 'response' => 403 ] );
+        }
+
+        $streamer->stream( $certificate->wpAttachmentId );
     }
 }

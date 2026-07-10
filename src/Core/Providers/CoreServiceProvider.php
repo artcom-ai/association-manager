@@ -14,9 +14,9 @@ use AssociationManager\Core\Fields\Repositories\FieldDefinitionRepository;
 use AssociationManager\Core\Fields\Repositories\FieldDefinitionRepositoryInterface;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepository;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
-use AssociationManager\Core\Fields\Services\FieldFileStreamer;
 use AssociationManager\Core\Fields\Services\FieldValidator;
 use AssociationManager\Core\Fields\Services\FieldValueService;
+use AssociationManager\Core\Media\AttachmentStreamer;
 use AssociationManager\Core\ModuleManager;
 use AssociationManager\Core\ServiceProviderInterface;
 use AssociationManager\Core\Templating\TemplateRenderer;
@@ -57,7 +57,7 @@ final class CoreServiceProvider implements ServiceProviderInterface {
         $container->set( FieldRegistry::class, new FieldRegistry() );
         $container->set( FieldValueRepositoryInterface::class, new FieldValueRepository() );
         $container->set( FieldDefinitionRepositoryInterface::class, new FieldDefinitionRepository() );
-        $container->set( FieldFileStreamer::class, new FieldFileStreamer() );
+        $container->set( AttachmentStreamer::class, new AttachmentStreamer() );
         $container->set( TemplateRenderer::class, new TemplateRenderer() );
 
         $container->set(

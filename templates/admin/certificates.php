@@ -82,8 +82,20 @@ $statusLabels = [
                     <td><?php echo esc_html($certificate->typeKey); ?></td>
                     <td><?php echo esc_html($statusLabels[$certificate->status] ?? $certificate->status); ?></td>
                     <td><?php echo esc_html($certificate->issuedAt); ?></td>
+                    <?php
+                    $downloadUrl = wp_nonce_url(
+                        add_query_arg(
+                            [
+                                'action' => 'association_manager_download_certificate',
+                                'certificate_id' => $certificate->id,
+                            ],
+                            admin_url('admin-post.php')
+                        ),
+                        'association_manager_download_certificate_' . $certificate->id
+                    );
+                    ?>
                     <td>
-                        <a href="<?php echo esc_url(wp_get_attachment_url($certificate->wpAttachmentId) ?: '#'); ?>" target="_blank">
+                        <a href="<?php echo esc_url($downloadUrl); ?>" target="_blank" rel="noopener noreferrer">
                             <?php esc_html_e('Download', 'association-manager'); ?>
                         </a>
                         <?php if ($certificate->status === 'draft') : ?>

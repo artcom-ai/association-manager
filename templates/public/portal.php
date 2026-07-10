@@ -187,8 +187,20 @@ $notificationStatusLabels = [
         <?php else : ?>
             <ul>
                 <?php foreach ($certificates as $certificate) : ?>
+                    <?php
+                    $certificateDownloadUrl = wp_nonce_url(
+                        add_query_arg(
+                            [
+                                'action' => 'association_manager_download_own_certificate',
+                                'certificate_id' => $certificate->id,
+                            ],
+                            admin_url('admin-post.php')
+                        ),
+                        'association_manager_download_own_certificate_' . $certificate->id
+                    );
+                    ?>
                     <li>
-                        <a href="<?php echo esc_url(wp_get_attachment_url($certificate->wpAttachmentId) ?: '#'); ?>" target="_blank">
+                        <a href="<?php echo esc_url($certificateDownloadUrl); ?>" target="_blank" rel="noopener noreferrer">
                             <?php echo esc_html($certificate->typeKey); ?> &mdash; <?php echo esc_html($certificate->issuedAt); ?>
                         </a>
                     </li>

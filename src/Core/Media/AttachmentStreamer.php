@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-namespace AssociationManager\Core\Fields\Services;
+namespace AssociationManager\Core\Media;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pure "given an attachment ID, send it as an HTTP response" - no
- * authorization logic at all. Callers (Modules\Members' admin-only
- * download handler, Modules\Portal's member-owns-this-record download
- * handler) are responsible for checking access before ever calling
- * this; Core has no way to know what "owns this record" means for a
- * given entity type (that's Module domain knowledge - see ADR-023
- * addendum), so it deliberately isn't attempted here.
+ * Pure "given a WP attachment ID, send it as an HTTP response" - no
+ * authorization logic at all. Shared by every Module that needs a
+ * gated download (Members/Portal for member field files, Certificates
+ * for issued certificate PDFs) - "does this WP user own this record"
+ * is Module domain knowledge Core can't have without depending on a
+ * Module (ADR-001/002), so every caller is responsible for checking
+ * access before ever calling this. Originally built (and namespaced)
+ * for Core\Fields specifically, then promoted here once Certificates
+ * needed the identical capability - see ADR-023/ADR-019 addenda.
  */
-final class FieldFileStreamer {
+final class AttachmentStreamer {
 
     /**
      * Ends the request (exit) on success, same as any other

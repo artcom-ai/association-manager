@@ -8,8 +8,8 @@ use AssociationManager\Core\Container;
 use AssociationManager\Core\Fields\FieldRegistry;
 use AssociationManager\Core\Fields\FieldValidationException;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
-use AssociationManager\Core\Fields\Services\FieldFileStreamer;
 use AssociationManager\Core\Fields\Services\FieldValueService;
+use AssociationManager\Core\Media\AttachmentStreamer;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Certificates\Services\CertificateService;
 use AssociationManager\Modules\Documents\Services\DocumentService;
@@ -52,7 +52,7 @@ final class PortalModule implements ModuleInterface {
         $service              = $container->get( PortalService::class );
         $memberService        = $container->get( MemberService::class );
         $fieldValueRepository = $container->get( FieldValueRepositoryInterface::class );
-        $fieldFileStreamer    = $container->get( FieldFileStreamer::class );
+        $attachmentStreamer   = $container->get( AttachmentStreamer::class );
 
         ( new PortalShortcode( $service ) )->register();
         ( new RegistrationShortcode() )->register();
@@ -91,8 +91,8 @@ final class PortalModule implements ModuleInterface {
 
         add_action(
             'admin_post_association_manager_download_own_field_file',
-            function () use ( $service, $fieldValueRepository, $fieldFileStreamer ): void {
-                $this->handleDownloadOwnFieldFile( $service, $fieldValueRepository, $fieldFileStreamer );
+            function () use ( $service, $fieldValueRepository, $attachmentStreamer ): void {
+                $this->handleDownloadOwnFieldFile( $service, $fieldValueRepository, $attachmentStreamer );
             }
         );
     }
@@ -211,7 +211,7 @@ final class PortalModule implements ModuleInterface {
      * this field's value) is the whole reason this lives in Portal
      * rather than being one shared Core endpoint; see ADR-023 addendum.
      */
-    private function handleDownloadOwnFieldFile( PortalService $service, FieldValueRepositoryInterface $fieldValues, FieldFileStreamer $streamer ): void {
+    private function handleDownloadOwnFieldFile( PortalService $service, FieldValueRepositoryInterface $fieldValues, AttachmentStreamer $streamer ): void {
         if ( ! is_user_logged_in() ) {
             wp_die( esc_html__( 'You must be logged in.', 'association-manager' ) );
         }

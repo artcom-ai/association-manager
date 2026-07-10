@@ -10,8 +10,8 @@ use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\FieldRegistry;
 use AssociationManager\Core\Fields\FieldValidationException;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
-use AssociationManager\Core\Fields\Services\FieldFileStreamer;
 use AssociationManager\Core\Fields\Services\FieldValueService;
+use AssociationManager\Core\Media\AttachmentStreamer;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\EditMemberPage;
 use AssociationManager\Modules\Members\Admin\MemberBulkActions;
@@ -79,7 +79,7 @@ final class MembersModule implements ModuleInterface {
         $fieldRegistry        = $container->get( FieldRegistry::class );
         $fieldValueService    = $container->get( FieldValueService::class );
         $fieldValueRepository = $container->get( FieldValueRepositoryInterface::class );
-        $fieldFileStreamer    = $container->get( FieldFileStreamer::class );
+        $attachmentStreamer   = $container->get( AttachmentStreamer::class );
         $expiryRunner         = $container->get( MembershipExpiryRunner::class );
 
         $statusRegistry = $container->get( MemberStatusRegistry::class );
@@ -142,8 +142,8 @@ final class MembersModule implements ModuleInterface {
 
         add_action(
             'admin_post_association_manager_download_member_field_file',
-            function () use ( $fieldValueRepository, $fieldFileStreamer ): void {
-                $this->handleDownloadMemberFieldFile( $fieldValueRepository, $fieldFileStreamer );
+            function () use ( $fieldValueRepository, $attachmentStreamer ): void {
+                $this->handleDownloadMemberFieldFile( $fieldValueRepository, $attachmentStreamer );
             }
         );
 
@@ -446,9 +446,9 @@ final class MembersModule implements ModuleInterface {
      * Portal's equivalent handler, which additionally has to confirm
      * the requesting WP user actually owns the member record - see
      * ADR-023 addendum for why that split lives in each Module rather
-     * than in Core\Fields\Services\FieldFileStreamer itself.
+     * than in Core\Media\AttachmentStreamer itself.
      */
-    private function handleDownloadMemberFieldFile( FieldValueRepositoryInterface $fieldValues, FieldFileStreamer $streamer ): void {
+    private function handleDownloadMemberFieldFile( FieldValueRepositoryInterface $fieldValues, AttachmentStreamer $streamer ): void {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
         }
