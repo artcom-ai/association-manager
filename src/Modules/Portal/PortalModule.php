@@ -16,6 +16,7 @@ use AssociationManager\Modules\Documents\Services\DocumentService;
 use AssociationManager\Modules\Members\Domain\MemberRegistrationException;
 use AssociationManager\Modules\Members\Services\MemberService;
 use AssociationManager\Modules\Notifications\Services\NotificationService;
+use AssociationManager\Modules\Portal\Public\LoginShortcode;
 use AssociationManager\Modules\Portal\Public\PortalShortcode;
 use AssociationManager\Modules\Portal\Public\RegistrationShortcode;
 use AssociationManager\Modules\Portal\Services\PortalService;
@@ -56,12 +57,13 @@ final class PortalModule implements ModuleInterface {
 
         ( new PortalShortcode( $service ) )->register();
         ( new RegistrationShortcode() )->register();
+        ( new LoginShortcode() )->register();
 
-        // Registration is a public, unauthenticated action - both hooks
-        // are required (admin_post_ for a logged-in visitor hitting the
-        // form by mistake, admin_post_nopriv_ for the actual anonymous
+        // Registration/login are public, unauthenticated actions - both
+        // hooks are required (admin_post_ for a logged-in visitor hitting
+        // the form by mistake, admin_post_nopriv_ for the actual anonymous
         // case) or WordPress would 403 the request before it ever reaches
-        // this handler.
+        // these handlers.
         add_action(
             'admin_post_association_manager_register',
             function () use ( $memberService ): void {
@@ -72,6 +74,19 @@ final class PortalModule implements ModuleInterface {
             'admin_post_nopriv_association_manager_register',
             function () use ( $memberService ): void {
                 $this->handleRegister( $memberService );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_login',
+            function (): void {
+                $this->handleLogin();
+            }
+        );
+        add_action(
+            'admin_post_nopriv_association_manager_login',
+            function (): void {
+                $this->handleLogin();
             }
         );
 
@@ -135,6 +150,50 @@ final class PortalModule implements ModuleInterface {
 
         wp_set_current_user( $member->wpUserId );
         wp_set_auth_cookie( $member->wpUserId );
+
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /**
+     * Plain wp_signon() - this doesn't reinvent or weaken WP's own
+     * login/cookie handling, only wraps it in a form that lives on a
+     * normal front-end page instead of wp-login.php. Same
+     * transient-keyed-by-token error round-trip as handleRegister(),
+     * since the visitor isn't logged in yet when a login attempt fails.
+     */
+    private function handleLogin(): void {
+        check_admin_referer( 'association_manager_login' );
+
+        $login    = isset( $_POST['log'] ) ? sanitize_text_field( wp_unslash( $_POST['log'] ) ) : '';
+        $password = isset( $_POST['pwd'] ) ? (string) $_POST['pwd'] : '';
+        $redirect = isset( $_POST['redirect'] ) ? esc_url_raw( wp_unslash( $_POST['redirect'] ) ) : home_url();
+
+        $user = wp_signon(
+            [
+				'user_login'    => $login,
+				'user_password' => $password,
+				'remember'      => isset( $_POST['remember'] ),
+			],
+            is_ssl()
+        );
+
+        if ( is_wp_error( $user ) ) {
+            $token = wp_generate_uuid4();
+
+            set_transient(
+                'am_login_error_' . $token,
+                [
+					'errors' => [ 'login' => [ __( 'Incorrect username/email or password.', 'association-manager' ) ] ],
+					'log'    => $login,
+				],
+                5 * MINUTE_IN_SECONDS
+            );
+
+            $referer = wp_get_referer();
+            wp_safe_redirect( add_query_arg( [ 'am_login_error' => $token ], $referer !== false ? $referer : home_url() ) );
+            exit;
+        }
 
         wp_safe_redirect( $redirect );
         exit;
