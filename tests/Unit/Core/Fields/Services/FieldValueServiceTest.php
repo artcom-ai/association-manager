@@ -181,4 +181,91 @@ final class FieldValueServiceTest extends TestCase
 
         $this->service->saveWithUploads('member', 1, ['education' => 'invalid'], null);
     }
+
+    public function testSaveWithUploadsAppliesTheFirstUploadDirectlyEvenWhenApprovalIsRequired(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            requiresApprovalToChange: true,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 100;
+
+        $pending = $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'first.pdf'));
+
+        $this->assertSame([], $pending, 'the first-ever upload on a field must never require approval');
+        $this->assertSame('100', $this->service->valuesFor('member', 1)['id_document']);
+    }
+
+    public function testSaveWithUploadsRoutesAReplacementToPendingWhenApprovalIsRequired(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            requiresApprovalToChange: true,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 100;
+        $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'first.pdf'));
+
+        $GLOBALS['__am_test_media_upload_result'] = 200;
+        $pending = $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'replacement.pdf'));
+
+        $this->assertSame(['id_document'], $pending);
+        $this->assertSame('100', $this->service->valuesFor('member', 1)['id_document'], 'the live value must stay the old file until approved');
+    }
+
+    public function testSaveWithUploadsBypassApprovalAppliesAReplacementDirectly(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            requiresApprovalToChange: true,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 100;
+        $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'first.pdf'));
+
+        $GLOBALS['__am_test_media_upload_result'] = 200;
+        $pending = $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'replacement.pdf'), bypassApproval: true);
+
+        $this->assertSame([], $pending, 'an admin-originated save must bypass the approval gate entirely');
+        $this->assertSame('200', $this->service->valuesFor('member', 1)['id_document']);
+    }
+
+    public function testSaveWithUploadsReplacesDirectlyWhenTheFieldDoesNotRequireApproval(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 100;
+        $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'first.pdf'));
+
+        $GLOBALS['__am_test_media_upload_result'] = 200;
+        $pending = $this->service->saveWithUploads('member', 1, [], $this->fileUpload('id_document', 'replacement.pdf'));
+
+        $this->assertSame([], $pending);
+        $this->assertSame('200', $this->service->valuesFor('member', 1)['id_document']);
+    }
+
+    /**
+     * @return array{name: array<string, string>, type: array<string, string>, tmp_name: array<string, string>, error: array<string, int>, size: array<string, int>}
+     */
+    private function fileUpload(string $fieldKey, string $fileName): array
+    {
+        return [
+            'name' => [$fieldKey => $fileName],
+            'type' => [$fieldKey => 'application/pdf'],
+            'tmp_name' => [$fieldKey => '/tmp/fake'],
+            'error' => [$fieldKey => 0],
+            'size' => [$fieldKey => 123],
+        ];
+    }
 }

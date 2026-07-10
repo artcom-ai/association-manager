@@ -50,4 +50,54 @@ final class FieldValueRepositoryTest extends TestCase
 
         $this->assertSame('Cardiology', $this->repository->get('member', 1, 'specialty'));
     }
+
+    public function testSetPendingDoesNotTouchTheCurrentLiveValue(): void
+    {
+        $this->repository->set('member', 1, 'id_document', '100');
+
+        $this->repository->setPending('member', 1, 'id_document', '200');
+
+        $this->assertSame('100', $this->repository->get('member', 1, 'id_document'), 'the live value must be untouched by a pending write');
+        $this->assertSame(['id_document' => '200'], $this->repository->pendingFor('member', 1));
+    }
+
+    public function testApprovePendingPromotesItToTheLiveValueAndClearsPending(): void
+    {
+        $this->repository->set('member', 1, 'id_document', '100');
+        $this->repository->setPending('member', 1, 'id_document', '200');
+
+        $this->repository->approvePending('member', 1, 'id_document');
+
+        $this->assertSame('200', $this->repository->get('member', 1, 'id_document'));
+        $this->assertSame([], $this->repository->pendingFor('member', 1));
+    }
+
+    public function testRejectPendingDiscardsItAndLeavesTheLiveValueUntouched(): void
+    {
+        $this->repository->set('member', 1, 'id_document', '100');
+        $this->repository->setPending('member', 1, 'id_document', '200');
+
+        $this->repository->rejectPending('member', 1, 'id_document');
+
+        $this->assertSame('100', $this->repository->get('member', 1, 'id_document'));
+        $this->assertSame([], $this->repository->pendingFor('member', 1));
+    }
+
+    public function testApprovePendingWithNoPendingValueIsANoOp(): void
+    {
+        $this->repository->set('member', 1, 'id_document', '100');
+
+        $this->repository->approvePending('member', 1, 'id_document');
+
+        $this->assertSame('100', $this->repository->get('member', 1, 'id_document'));
+    }
+
+    public function testPendingForOnlyReturnsFieldsWithAPendingValue(): void
+    {
+        $this->repository->set('member', 1, 'id_document', '100');
+        $this->repository->set('member', 1, 'diploma', '150');
+        $this->repository->setPending('member', 1, 'diploma', '250');
+
+        $this->assertSame(['diploma' => '250'], $this->repository->pendingFor('member', 1));
+    }
 }

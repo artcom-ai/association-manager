@@ -85,29 +85,46 @@ final class FieldValueService {
      *
      * A field key present in $uploadedFiles is excluded from the save()
      * pass below - handleFileUpload() already persisted its value
-     * directly, so passing it through save() too would just be a
-     * redundant duplicate write of the same value.
+     * (or pending value) directly, so passing it through save() too
+     * would just be a redundant duplicate write of the same value.
+     *
+     * $bypassApproval is true for admin-originated saves (the admin
+     * editing a member's fields directly is by definition already the
+     * approver - see ADR-023 addendum) and false for member-originated
+     * saves, where a field flagged requiresApprovalToChange routes a
+     * *replacement* upload (not the first-ever one) to a pending value
+     * instead of applying it immediately.
      *
      * @param array<string, mixed> $submittedValues
      * @param array{name?: mixed, type?: mixed, tmp_name?: mixed, error?: mixed, size?: mixed}|null $rawFileUploads the "custom_fields" sub-array of $_FILES, or null if the form had no file inputs at all - typed loosely on purpose, since this is raw HTTP input, not a shape PHP or a caller can actually guarantee
+     * @return string[] field keys whose upload was routed to a pending value rather than applied immediately - empty when nothing required approval
      */
-    public function saveWithUploads( string $entityType, int $entityId, array $submittedValues, ?array $rawFileUploads ): void {
-        $uploadedFiles = $this->reshapeFileUploads( $rawFileUploads );
+    public function saveWithUploads( string $entityType, int $entityId, array $submittedValues, ?array $rawFileUploads, bool $bypassApproval = false ): array {
+        $uploadedFiles    = $this->reshapeFileUploads( $rawFileUploads );
+        $pendingFieldKeys = [];
 
         foreach ( $uploadedFiles as $fieldKey => $fileData ) {
-            $this->handleFileUpload( $entityType, $entityId, $fieldKey, $fileData );
+            if ( $this->isPendingReplacement( $entityType, $entityId, $fieldKey, $bypassApproval ) ) {
+                $pendingFieldKeys[] = $fieldKey;
+            }
+
+            $this->handleFileUpload( $entityType, $entityId, $fieldKey, $fileData, $bypassApproval );
         }
 
         $this->save( $entityType, $entityId, array_diff_key( $submittedValues, $uploadedFiles ) );
+
+        return $pendingFieldKeys;
     }
 
     /**
      * @param array{name: string, type: string, tmp_name: string, error: int, size: int} $fileData
      */
-    public function handleFileUpload( string $entityType, int $entityId, string $fieldKey, array $fileData ): int {
+    public function handleFileUpload( string $entityType, int $entityId, string $fieldKey, array $fileData, bool $bypassApproval = false ): int {
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $pending = $this->isPendingReplacement( $entityType, $entityId, $fieldKey, $bypassApproval );
 
         $_FILES[ $fieldKey ] = $fileData;
 
@@ -117,9 +134,35 @@ final class FieldValueService {
             throw new FieldValidationException( [ $fieldKey => [ $attachmentId->get_error_message() ] ] );
         }
 
-        $this->repository->set( $entityType, $entityId, $fieldKey, (string) $attachmentId );
+        if ( $pending ) {
+            $this->repository->setPending( $entityType, $entityId, $fieldKey, (string) $attachmentId );
+        } else {
+            $this->repository->set( $entityType, $entityId, $fieldKey, (string) $attachmentId );
+        }
 
         return $attachmentId;
+    }
+
+    /**
+     * A replacement (not the field's first-ever value) on a field
+     * flagged requiresApprovalToChange, submitted by a caller that
+     * doesn't bypass approval - the exact "after the initial upload"
+     * condition from ADR-023's addendum. Shared by saveWithUploads()
+     * (to report which keys went pending) and handleFileUpload() (to
+     * decide set() vs setPending()) so the condition is defined once.
+     */
+    private function isPendingReplacement( string $entityType, int $entityId, string $fieldKey, bool $bypassApproval ): bool {
+        if ( $bypassApproval ) {
+            return false;
+        }
+
+        $field = $this->registry->get( $entityType, $fieldKey );
+
+        if ( $field === null || ! $field->requiresApprovalToChange ) {
+            return false;
+        }
+
+        return $this->repository->get( $entityType, $entityId, $fieldKey ) !== null;
     }
 
     /**

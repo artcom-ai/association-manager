@@ -12,6 +12,7 @@ defined('ABSPATH') || exit;
 /** @var bool $canEditProfile */
 /** @var \AssociationManager\Core\Fields\Admin\FieldRenderer $fieldRenderer */
 /** @var array<string, string[]> $profileErrors */
+/** @var array<int, array{field: \AssociationManager\Core\Fields\FieldDefinition, value: ?string, pending: ?string, downloadUrl: ?string, pendingDownloadUrl: ?string}> $editableFileFields */
 
 $notificationStatusLabels = [
     'pending' => __('Pending', 'association-manager'),
@@ -80,6 +81,51 @@ $notificationStatusLabels = [
             <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>
         <?php endif; ?>
     </section>
+
+    <?php if (!$canEditProfile) : ?>
+    <section class="am-portal-file-fields">
+        <h2><?php esc_html_e('Documents on file', 'association-manager'); ?></h2>
+        <?php /* Only shown once the main Profile form above is locked (member already active) - during onboarding, file fields are already reachable there; see ADR-023 addendum. */ ?>
+        <?php if (empty($editableFileFields)) : ?>
+            <p><?php esc_html_e('No document fields are set up for members.', 'association-manager'); ?></p>
+        <?php else : ?>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
+                <?php wp_nonce_field('association_manager_update_field_file'); ?>
+                <input type="hidden" name="action" value="association_manager_update_field_file" />
+                <table class="form-table">
+                    <tbody>
+                    <?php foreach ($editableFileFields as $row) : ?>
+                        <tr>
+                            <th scope="row"><?php echo esc_html($row['field']->label); ?></th>
+                            <td>
+                                <?php if ($row['downloadUrl'] !== null) : ?>
+                                    <p>
+                                        <a href="<?php echo esc_url($row['downloadUrl']); ?>" target="_blank" rel="noopener noreferrer">
+                                            <?php esc_html_e('View current file', 'association-manager'); ?>
+                                        </a>
+                                    </p>
+                                <?php else : ?>
+                                    <p><?php esc_html_e('No file on file yet.', 'association-manager'); ?></p>
+                                <?php endif; ?>
+                                <?php if ($row['pendingDownloadUrl'] !== null) : ?>
+                                    <p class="description">
+                                        <?php esc_html_e('A replacement is awaiting admin approval -', 'association-manager'); ?>
+                                        <a href="<?php echo esc_url($row['pendingDownloadUrl']); ?>" target="_blank" rel="noopener noreferrer">
+                                            <?php esc_html_e('view it', 'association-manager'); ?>
+                                        </a>
+                                    </p>
+                                <?php endif; ?>
+                                <input type="file" name="custom_fields[<?php echo esc_attr($row['field']->key); ?>]" />
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p><button type="submit" class="button button-primary"><?php esc_html_e('Upload', 'association-manager'); ?></button></p>
+            </form>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
 
     <section class="am-portal-status">
         <h2><?php esc_html_e('Membership status', 'association-manager'); ?></h2>

@@ -40,6 +40,7 @@ final class FieldDefinition {
         public readonly int $order = 0,
         public readonly string $visibility = self::VISIBILITY_ADMIN,
         public readonly bool $showInList = false,
+        public readonly bool $requiresApprovalToChange = false,
     ) {
     }
 

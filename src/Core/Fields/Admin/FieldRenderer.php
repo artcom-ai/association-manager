@@ -15,7 +15,15 @@ defined( 'ABSPATH' ) || exit;
  */
 final class FieldRenderer {
 
-    public function render( FieldDefinition $field, ?string $value ): void {
+    /**
+     * $downloadUrl is only meaningful for TYPE_FILE with a non-null
+     * $value - the caller builds it (a gated, permission-checked
+     * download link; see ADR-023 addendum) since FieldRenderer itself
+     * lives in Core and has no way to know which Module's download
+     * route applies (admin's own, or the Portal member-facing one).
+     * Left null, TYPE_FILE falls back to showing the bare attachment ID.
+     */
+    public function render( FieldDefinition $field, ?string $value, ?string $downloadUrl = null ): void {
         $id   = 'am-field-' . $field->key;
         $name = 'custom_fields[' . $field->key . ']';
         ?>
@@ -26,7 +34,7 @@ final class FieldRenderer {
                 </label>
             </th>
             <td>
-                <?php $this->renderInput( $field, $id, $name, $value ); ?>
+                <?php $this->renderInput( $field, $id, $name, $value, $downloadUrl ); ?>
                 <?php if ( $field->helpText !== null ) : ?>
                     <p class="description"><?php echo esc_html( $field->helpText ); ?></p>
                 <?php endif; ?>
@@ -35,7 +43,7 @@ final class FieldRenderer {
         <?php
     }
 
-    private function renderInput( FieldDefinition $field, string $id, string $name, ?string $value ): void {
+    private function renderInput( FieldDefinition $field, string $id, string $name, ?string $value, ?string $downloadUrl = null ): void {
         switch ( $field->type ) {
             case FieldDefinition::TYPE_TEXTAREA:
                 ?>
@@ -65,7 +73,13 @@ final class FieldRenderer {
             case FieldDefinition::TYPE_FILE:
                 ?>
                 <input type="file" id="<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $name ); ?>" />
-                <?php if ( $value !== null ) : ?>
+                <?php if ( $value !== null && $downloadUrl !== null ) : ?>
+                    <p class="description">
+                        <a href="<?php echo esc_url( $downloadUrl ); ?>" target="_blank" rel="noopener noreferrer">
+                            <?php esc_html_e( 'View current file', 'association-manager' ); ?>
+                        </a>
+                    </p>
+                <?php elseif ( $value !== null ) : ?>
                     <p class="description">
                         <?php
                         printf(

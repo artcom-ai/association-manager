@@ -9,6 +9,8 @@ defined('ABSPATH') || exit;
 /** @var array<string, string> $values */
 /** @var \AssociationManager\Core\Fields\Admin\FieldRenderer $renderer */
 /** @var ?string $noticeType */
+/** @var array<string, string> $fileDownloadUrls field key => gated download URL, only for TYPE_FILE fields with a current value */
+/** @var array<string, string> $pendingDownloadUrls field key => gated download URL for a not-yet-approved replacement, only for fields with one pending */
 ?>
 <div class="wrap">
     <h1>
@@ -42,6 +44,10 @@ defined('ABSPATH') || exit;
         <div class="notice notice-warning"><p><?php esc_html_e('Portal account created, but the setup email could not be sent.', 'association-manager'); ?></p></div>
     <?php elseif ($noticeType === 'account_invalid') : ?>
         <div class="notice notice-error"><p><?php esc_html_e('Could not create a portal account with that email.', 'association-manager'); ?></p></div>
+    <?php elseif ($noticeType === 'pending_approved') : ?>
+        <div class="notice notice-success"><p><?php esc_html_e('Change approved.', 'association-manager'); ?></p></div>
+    <?php elseif ($noticeType === 'pending_rejected') : ?>
+        <div class="notice notice-success"><p><?php esc_html_e('Change rejected. The previous file is unaffected.', 'association-manager'); ?></p></div>
     <?php endif; ?>
 
     <h2><?php esc_html_e('Identity', 'association-manager'); ?></h2>
@@ -127,12 +133,46 @@ defined('ABSPATH') || exit;
             <table class="form-table">
                 <tbody>
                 <?php foreach ($fields as $field) : ?>
-                    <?php $renderer->render($field, $values[$field->key] ?? null); ?>
+                    <?php $renderer->render($field, $values[$field->key] ?? null, $fileDownloadUrls[$field->key] ?? null); ?>
+                    <?php if (isset($pendingDownloadUrls[$field->key])) : ?>
+                        <tr>
+                            <th scope="row"></th>
+                            <td>
+                                <div class="notice notice-warning inline" style="margin: 0 0 1em;">
+                                    <p>
+                                        <?php esc_html_e('A replacement is awaiting approval:', 'association-manager'); ?>
+                                        <a href="<?php echo esc_url($pendingDownloadUrls[$field->key]); ?>" target="_blank" rel="noopener noreferrer">
+                                            <?php esc_html_e('view pending file', 'association-manager'); ?>
+                                        </a>
+                                    </p>
+                                    <p>
+                                        <button type="submit" form="am-approve-<?php echo esc_attr($field->key); ?>" class="button button-primary"><?php esc_html_e('Approve', 'association-manager'); ?></button>
+                                        <button type="submit" form="am-reject-<?php echo esc_attr($field->key); ?>" class="button"><?php esc_html_e('Reject', 'association-manager'); ?></button>
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
 
             <?php submit_button(__('Save fields', 'association-manager')); ?>
         </form>
+
+        <?php foreach ($pendingDownloadUrls as $pendingFieldKey => $pendingUrl) : ?>
+            <form id="am-approve-<?php echo esc_attr($pendingFieldKey); ?>" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <?php wp_nonce_field('association_manager_approve_pending_field_' . $member->id . '_' . $pendingFieldKey); ?>
+                <input type="hidden" name="action" value="association_manager_approve_pending_field" />
+                <input type="hidden" name="member_id" value="<?php echo esc_attr((string) $member->id); ?>" />
+                <input type="hidden" name="field_key" value="<?php echo esc_attr($pendingFieldKey); ?>" />
+            </form>
+            <form id="am-reject-<?php echo esc_attr($pendingFieldKey); ?>" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <?php wp_nonce_field('association_manager_reject_pending_field_' . $member->id . '_' . $pendingFieldKey); ?>
+                <input type="hidden" name="action" value="association_manager_reject_pending_field" />
+                <input type="hidden" name="member_id" value="<?php echo esc_attr((string) $member->id); ?>" />
+                <input type="hidden" name="field_key" value="<?php echo esc_attr($pendingFieldKey); ?>" />
+            </form>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>

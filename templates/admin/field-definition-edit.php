@@ -91,6 +91,12 @@ if ($field !== null && $field->options !== null) {
                     <th scope="row"><?php esc_html_e('Members list', 'association-manager'); ?></th>
                     <td><label><input type="checkbox" name="show_in_list" value="1" <?php checked($field->showInList ?? false, true); ?> /> <?php esc_html_e('Show this field as a column on the Members list', 'association-manager'); ?></label></td>
                 </tr>
+                <tr id="am-field-approval-row">
+                    <th scope="row"><?php esc_html_e('Changes', 'association-manager'); ?></th>
+                    <td><label><input type="checkbox" name="requires_approval_to_change" value="1" <?php checked($field->requiresApprovalToChange ?? false, true); ?> /> <?php esc_html_e('Require admin approval when a member replaces an already-uploaded file', 'association-manager'); ?></label>
+                        <p class="description"><?php esc_html_e('The member\'s current file keeps working until an admin approves or rejects the replacement. File fields only.', 'association-manager'); ?></p>
+                    </td>
+                </tr>
                 <tr>
                     <th scope="row"><label for="am-field-visibility"><?php esc_html_e('Visibility', 'association-manager'); ?></label></th>
                     <td>

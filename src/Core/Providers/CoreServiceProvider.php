@@ -14,6 +14,7 @@ use AssociationManager\Core\Fields\Repositories\FieldDefinitionRepository;
 use AssociationManager\Core\Fields\Repositories\FieldDefinitionRepositoryInterface;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepository;
 use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
+use AssociationManager\Core\Fields\Services\FieldFileStreamer;
 use AssociationManager\Core\Fields\Services\FieldValidator;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleManager;
@@ -56,6 +57,7 @@ final class CoreServiceProvider implements ServiceProviderInterface {
         $container->set( FieldRegistry::class, new FieldRegistry() );
         $container->set( FieldValueRepositoryInterface::class, new FieldValueRepository() );
         $container->set( FieldDefinitionRepositoryInterface::class, new FieldDefinitionRepository() );
+        $container->set( FieldFileStreamer::class, new FieldFileStreamer() );
         $container->set( TemplateRenderer::class, new TemplateRenderer() );
 
         $container->set(
@@ -191,6 +193,7 @@ final class CoreServiceProvider implements ServiceProviderInterface {
             order: isset( $_POST['order'] ) ? (int) $_POST['order'] : 0,
             visibility: $visibility,
             showInList: isset( $_POST['show_in_list'] ),
+            requiresApprovalToChange: isset( $_POST['requires_approval_to_change'] ),
         );
 
         $fields->save( FieldDefinitionsPage::ENTITY_TYPE, $field );

@@ -52,6 +52,16 @@ final class PortalShortcode {
         $canEditProfile = $this->service->canEditProfile( $member );
         $fieldRenderer  = new FieldRenderer();
 
+        $editableFileFields = array_map(
+            function ( array $row ): array {
+                $row['downloadUrl']        = $row['value'] !== null ? $this->buildDownloadUrl( $row['field']->key, 'current' ) : null;
+                $row['pendingDownloadUrl'] = $row['pending'] !== null ? $this->buildDownloadUrl( $row['field']->key, 'pending' ) : null;
+
+                return $row;
+            },
+            $this->service->editableFileFieldsFor( $member )
+        );
+
         $profileErrors = [];
         $transientKey  = self::PROFILE_ERRORS_TRANSIENT_PREFIX . get_current_user_id();
         $stored        = get_transient( $transientKey );
@@ -71,5 +81,18 @@ final class PortalShortcode {
         $this->service->markNotificationsReadFor( $member );
 
         return $output;
+    }
+
+    private function buildDownloadUrl( string $fieldKey, string $which ): string {
+        $url = add_query_arg(
+            [
+				'action'    => 'association_manager_download_own_field_file',
+				'field_key' => $fieldKey,
+				'which'     => $which,
+			],
+            admin_url( 'admin-post.php' )
+        );
+
+        return wp_nonce_url( $url, 'association_manager_download_own_field_file_' . $fieldKey );
     }
 }

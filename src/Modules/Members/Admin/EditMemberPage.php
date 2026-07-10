@@ -7,7 +7,9 @@ namespace AssociationManager\Modules\Members\Admin;
 use AssociationManager\Core\Admin\AdminPageInterface;
 use AssociationManager\Core\Admin\DashboardPage;
 use AssociationManager\Core\Fields\Admin\FieldRenderer;
+use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Modules\Members\Services\MemberService;
 
@@ -22,10 +24,13 @@ final class EditMemberPage implements AdminPageInterface {
 
     public const SLUG = 'association-manager-member-edit';
 
+    private const DOWNLOAD_ACTION = 'association_manager_download_member_field_file';
+
     public function __construct(
         private readonly MemberService $memberService,
         private readonly FieldRegistry $fieldRegistry,
         private readonly FieldValueService $fieldValueService,
+        private readonly FieldValueRepositoryInterface $fieldValueRepository,
     ) {
     }
 
@@ -61,9 +66,41 @@ final class EditMemberPage implements AdminPageInterface {
 
         $fields     = $this->fieldRegistry->forEntityType( 'member' );
         $values     = $this->fieldValueService->valuesFor( 'member', $member->requireId() );
+        $pending    = $this->fieldValueRepository->pendingFor( 'member', $member->requireId() );
         $renderer   = new FieldRenderer();
         $noticeType = isset( $_GET['am_notice'] ) ? sanitize_text_field( (string) $_GET['am_notice'] ) : null;
 
+        $fileDownloadUrls    = [];
+        $pendingDownloadUrls = [];
+
+        foreach ( $fields as $field ) {
+            if ( $field->type !== FieldDefinition::TYPE_FILE ) {
+                continue;
+            }
+
+            if ( isset( $values[ $field->key ] ) ) {
+                $fileDownloadUrls[ $field->key ] = $this->buildDownloadUrl( $member->requireId(), $field->key, 'current' );
+            }
+
+            if ( isset( $pending[ $field->key ] ) ) {
+                $pendingDownloadUrls[ $field->key ] = $this->buildDownloadUrl( $member->requireId(), $field->key, 'pending' );
+            }
+        }
+
         require AM_PLUGIN_DIR . 'templates/admin/member-edit.php';
+    }
+
+    private function buildDownloadUrl( int $memberId, string $fieldKey, string $which ): string {
+        $url = add_query_arg(
+            [
+				'action'    => self::DOWNLOAD_ACTION,
+				'member_id' => $memberId,
+				'field_key' => $fieldKey,
+				'which'     => $which,
+			],
+            admin_url( 'admin-post.php' )
+        );
+
+        return wp_nonce_url( $url, self::DOWNLOAD_ACTION . '_' . $memberId . '_' . $fieldKey );
     }
 }

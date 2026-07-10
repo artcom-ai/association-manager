@@ -6,6 +6,7 @@ namespace AssociationManager\Modules\Portal\Services;
 
 use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\FieldRegistry;
+use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\Visibility;
 use AssociationManager\Modules\Certificates\Domain\Certificate;
@@ -40,6 +41,7 @@ final class PortalService {
         private readonly NotificationService $notifications,
         private readonly FieldRegistry $fieldRegistry,
         private readonly FieldValueService $fieldValueService,
+        private readonly FieldValueRepositoryInterface $fieldValueRepository,
     ) {
     }
 
@@ -153,16 +155,69 @@ final class PortalService {
      * Lets FieldValidationException propagate - the caller (the
      * admin-post handler) is expected to catch it and redisplay the form.
      *
+     * $rawFileUploads is saved with bypassApproval: true - the whole
+     * onboarding submission already goes through one holistic admin
+     * review (the member_submitted_for_approval flow below), so gating
+     * individual file fields with the separate per-field pending-value
+     * mechanism during that same initial review would just be two
+     * approval steps for one event. That mechanism is reserved for
+     * updateFileField() - an already-active member changing a file
+     * field later, see ADR-023 addendum.
+     *
      * @param array<string, mixed> $submittedValues
      * @param array{name?: mixed, type?: mixed, tmp_name?: mixed, error?: mixed, size?: mixed}|null $rawFileUploads the "custom_fields" sub-array of $_FILES
      */
     public function submitForApproval( Member $member, array $submittedValues, ?array $rawFileUploads = null ): Member {
-        $this->fieldValueService->saveWithUploads( self::MEMBER_ENTITY_TYPE, $member->requireId(), $submittedValues, $rawFileUploads );
+        $this->fieldValueService->saveWithUploads( self::MEMBER_ENTITY_TYPE, $member->requireId(), $submittedValues, $rawFileUploads, bypassApproval: true );
 
         if ( $member->status === MemberStatus::PENDING_APPROVAL ) {
             return $member;
         }
 
         return $this->members->transitionStatus( $member->requireId(), MemberStatus::PENDING_APPROVAL );
+    }
+
+    /**
+     * Every TYPE_FILE field visible to the member, regardless of
+     * canEditProfile()'s onboarding-only status gate - a member
+     * renewing an expiring document after already being approved is
+     * exactly the scenario this exists for (see ADR-023 addendum); the
+     * member's other, non-file fields must stay locked while this
+     * doesn't.
+     *
+     * @return array<int, array{field: FieldDefinition, value: ?string, pending: ?string}>
+     */
+    public function editableFileFieldsFor( Member $member ): array {
+        $values  = $this->fieldValueService->valuesFor( self::MEMBER_ENTITY_TYPE, $member->requireId() );
+        $pending = $this->fieldValueRepository->pendingFor( self::MEMBER_ENTITY_TYPE, $member->requireId() );
+
+        $rows = [];
+
+        foreach ( $this->fieldRegistry->forEntityType( self::MEMBER_ENTITY_TYPE ) as $field ) {
+            if ( $field->type !== FieldDefinition::TYPE_FILE || ! $field->isVisibleTo( Visibility::VISIBILITY_PRIVATE ) ) {
+                continue;
+            }
+
+            $rows[] = [
+				'field'   => $field,
+				'value'   => $values[ $field->key ] ?? null,
+				'pending' => $pending[ $field->key ] ?? null,
+			];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Member-initiated file-field update. Unlike submitForApproval(),
+     * this does NOT bypass the per-field approval gate - this is
+     * exactly the "change a file after the initial upload" scenario
+     * requiresApprovalToChange exists to gate (see ADR-023 addendum).
+     *
+     * @param array{name?: mixed, type?: mixed, tmp_name?: mixed, error?: mixed, size?: mixed}|null $rawFileUploads the "custom_fields" sub-array of $_FILES
+     * @return string[] field keys routed to a pending value rather than applied immediately
+     */
+    public function updateFileFields( Member $member, ?array $rawFileUploads ): array {
+        return $this->fieldValueService->saveWithUploads( self::MEMBER_ENTITY_TYPE, $member->requireId(), [], $rawFileUploads, bypassApproval: false );
     }
 }

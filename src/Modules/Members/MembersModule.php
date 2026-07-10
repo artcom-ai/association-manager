@@ -9,6 +9,8 @@ use AssociationManager\Core\Container;
 use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\FieldRegistry;
 use AssociationManager\Core\Fields\FieldValidationException;
+use AssociationManager\Core\Fields\Repositories\FieldValueRepositoryInterface;
+use AssociationManager\Core\Fields\Services\FieldFileStreamer;
 use AssociationManager\Core\Fields\Services\FieldValueService;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Modules\Members\Admin\EditMemberPage;
@@ -73,10 +75,12 @@ final class MembersModule implements ModuleInterface {
     }
 
     public function boot( Container $container ): void {
-        $service           = $container->get( MemberService::class );
-        $fieldRegistry     = $container->get( FieldRegistry::class );
-        $fieldValueService = $container->get( FieldValueService::class );
-        $expiryRunner      = $container->get( MembershipExpiryRunner::class );
+        $service              = $container->get( MemberService::class );
+        $fieldRegistry        = $container->get( FieldRegistry::class );
+        $fieldValueService    = $container->get( FieldValueService::class );
+        $fieldValueRepository = $container->get( FieldValueRepositoryInterface::class );
+        $fieldFileStreamer    = $container->get( FieldFileStreamer::class );
+        $expiryRunner         = $container->get( MembershipExpiryRunner::class );
 
         $statusRegistry = $container->get( MemberStatusRegistry::class );
         $planRegistry   = $container->get( MembershipPlanRegistry::class );
@@ -84,7 +88,7 @@ final class MembersModule implements ModuleInterface {
 
         $adminMenu = $container->get( AdminMenu::class );
         $adminMenu->register( new MembersPage( $service, $statusRegistry, $planRegistry, $fieldRegistry, $fieldValueService ) );
-        $adminMenu->register( new EditMemberPage( $service, $fieldRegistry, $fieldValueService ) );
+        $adminMenu->register( new EditMemberPage( $service, $fieldRegistry, $fieldValueService, $fieldValueRepository ) );
 
         // EditMemberPage is registered (for routing/capability checks) but
         // isn't a nav item - only reachable via the "Edit fields" link.
@@ -133,6 +137,27 @@ final class MembersModule implements ModuleInterface {
             'admin_post_association_manager_create_portal_account',
             function () use ( $service ): void {
                 $this->handleCreatePortalAccount( $service );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_download_member_field_file',
+            function () use ( $fieldValueRepository, $fieldFileStreamer ): void {
+                $this->handleDownloadMemberFieldFile( $fieldValueRepository, $fieldFileStreamer );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_approve_pending_field',
+            function () use ( $fieldValueRepository ): void {
+                $this->handleApprovePendingField( $fieldValueRepository );
+            }
+        );
+
+        add_action(
+            'admin_post_association_manager_reject_pending_field',
+            function () use ( $fieldValueRepository ): void {
+                $this->handleRejectPendingField( $fieldValueRepository );
             }
         );
 
@@ -240,8 +265,10 @@ final class MembersModule implements ModuleInterface {
         try {
             // The form has enctype="multipart/form-data" for exactly
             // this - saveWithUploads() also handles TYPE_FILE fields,
-            // which arrive in $_FILES, not $_POST.
-            $fieldValueService->saveWithUploads( 'member', $memberId, $submitted, $_FILES['custom_fields'] ?? null );
+            // which arrive in $_FILES, not $_POST. bypassApproval: true
+            // - the admin editing a member's fields directly is by
+            // definition already the approver (see ADR-023 addendum).
+            $fieldValueService->saveWithUploads( 'member', $memberId, $submitted, $_FILES['custom_fields'] ?? null, bypassApproval: true );
             $redirectArgs['am_notice'] = 'saved';
         } catch ( FieldValidationException ) {
             $redirectArgs['am_notice'] = 'invalid';
@@ -409,6 +436,88 @@ final class MembersModule implements ModuleInterface {
             __( 'Set your password', 'association-manager' ),
             $message
         );
+    }
+
+    /**
+     * Admin-only download for a member's file field - "which" selects
+     * the live value or a not-yet-approved pending replacement (the
+     * admin previewing what they're about to approve/reject). No
+     * authorization beyond manage_options is needed here, unlike the
+     * Portal's equivalent handler, which additionally has to confirm
+     * the requesting WP user actually owns the member record - see
+     * ADR-023 addendum for why that split lives in each Module rather
+     * than in Core\Fields\Services\FieldFileStreamer itself.
+     */
+    private function handleDownloadMemberFieldFile( FieldValueRepositoryInterface $fieldValues, FieldFileStreamer $streamer ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_GET['member_id'] ) ? (int) $_GET['member_id'] : 0;
+        $fieldKey = isset( $_GET['field_key'] ) ? sanitize_key( wp_unslash( $_GET['field_key'] ) ) : '';
+
+        check_admin_referer( 'association_manager_download_member_field_file_' . $memberId . '_' . $fieldKey );
+
+        $which        = ( $_GET['which'] ?? 'current' ) === 'pending' ? 'pending' : 'current';
+        $attachmentId = $which === 'pending'
+            ? ( $fieldValues->pendingFor( 'member', $memberId )[ $fieldKey ] ?? null )
+            : $fieldValues->get( 'member', $memberId, $fieldKey );
+
+        if ( $attachmentId === null || ! is_numeric( $attachmentId ) ) {
+            wp_die( esc_html__( 'File not found.', 'association-manager' ), '', [ 'response' => 404 ] );
+        }
+
+        $streamer->stream( (int) $attachmentId );
+    }
+
+    private function handleApprovePendingField( FieldValueRepositoryInterface $fieldValues ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+        $fieldKey = isset( $_POST['field_key'] ) ? sanitize_key( wp_unslash( $_POST['field_key'] ) ) : '';
+
+        check_admin_referer( 'association_manager_approve_pending_field_' . $memberId . '_' . $fieldKey );
+
+        $fieldValues->approvePending( 'member', $memberId, $fieldKey );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+					'page'      => EditMemberPage::SLUG,
+					'id'        => $memberId,
+					'am_notice' => 'pending_approved',
+				],
+				admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
+    private function handleRejectPendingField( FieldValueRepositoryInterface $fieldValues ): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You do not have permission to do this.', 'association-manager' ) );
+        }
+
+        $memberId = isset( $_POST['member_id'] ) ? (int) $_POST['member_id'] : 0;
+        $fieldKey = isset( $_POST['field_key'] ) ? sanitize_key( wp_unslash( $_POST['field_key'] ) ) : '';
+
+        check_admin_referer( 'association_manager_reject_pending_field_' . $memberId . '_' . $fieldKey );
+
+        $fieldValues->rejectPending( 'member', $memberId, $fieldKey );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+					'page'      => EditMemberPage::SLUG,
+					'id'        => $memberId,
+					'am_notice' => 'pending_rejected',
+				],
+				admin_url( 'admin.php' )
+            )
+        );
+        exit;
     }
 
     private function handleExportMembers( MemberCsvExporter $exporter ): void {

@@ -70,23 +70,24 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
         $now   = current_time( 'mysql' );
 
         $data    = [
-            'entity_type'   => $entityType,
-            'field_key'     => $field->key,
-            'label'         => $field->label,
-            'type'          => $field->type,
-            'required'      => $field->required ? 1 : 0,
-            'options'       => $field->options !== null ? wp_json_encode( $field->options ) : null,
-            'min_length'    => $field->minLength,
-            'max_length'    => $field->maxLength,
-            'min_value'     => $field->minValue,
-            'max_value'     => $field->maxValue,
-            'help_text'     => $field->helpText,
-            'display_order' => $field->order,
-            'visibility'    => $field->visibility,
-            'show_in_list'  => $field->showInList ? 1 : 0,
-            'updated_at'    => $now,
+            'entity_type'                 => $entityType,
+            'field_key'                   => $field->key,
+            'label'                       => $field->label,
+            'type'                        => $field->type,
+            'required'                    => $field->required ? 1 : 0,
+            'options'                     => $field->options !== null ? wp_json_encode( $field->options ) : null,
+            'min_length'                  => $field->minLength,
+            'max_length'                  => $field->maxLength,
+            'min_value'                   => $field->minValue,
+            'max_value'                   => $field->maxValue,
+            'help_text'                   => $field->helpText,
+            'display_order'               => $field->order,
+            'visibility'                  => $field->visibility,
+            'show_in_list'                => $field->showInList ? 1 : 0,
+            'requires_approval_to_change' => $field->requiresApprovalToChange ? 1 : 0,
+            'updated_at'                  => $now,
         ];
-        $formats = [ '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%f', '%f', '%s', '%d', '%s', '%d', '%s' ];
+        $formats = [ '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%f', '%f', '%s', '%d', '%s', '%d', '%d', '%s' ];
 
         $existing = $this->find( $entityType, $field->key );
 
@@ -151,6 +152,7 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
             order: (int) $row['display_order'],
             visibility: $row['visibility'],
             showInList: (bool) ( $row['show_in_list'] ?? false ),
+            requiresApprovalToChange: (bool) ( $row['requires_approval_to_change'] ?? false ),
         );
     }
 }

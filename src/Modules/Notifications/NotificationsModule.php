@@ -6,6 +6,7 @@ namespace AssociationManager\Modules\Notifications;
 
 use AssociationManager\Core\Admin\AdminMenu;
 use AssociationManager\Core\Container;
+use AssociationManager\Core\Fields\FieldRegistry;
 use AssociationManager\Core\ModuleInterface;
 use AssociationManager\Core\Templating\TemplateRenderer;
 use AssociationManager\Modules\Certificates\Domain\Certificate;
@@ -72,10 +73,11 @@ final class NotificationsModule implements ModuleInterface {
     }
 
     public function boot( Container $container ): void {
-        $dispatcher  = $container->get( NotificationDispatcher::class );
-        $templates   = $container->get( NotificationTemplateRepositoryInterface::class );
-        $queueRunner = $container->get( NotificationQueueRunner::class );
-        $members     = $container->get( MemberService::class );
+        $dispatcher    = $container->get( NotificationDispatcher::class );
+        $templates     = $container->get( NotificationTemplateRepositoryInterface::class );
+        $queueRunner   = $container->get( NotificationQueueRunner::class );
+        $members       = $container->get( MemberService::class );
+        $fieldRegistry = $container->get( FieldRegistry::class );
 
         $container->get( AdminMenu::class )->register( new NotificationTemplatesPage( $templates ) );
 
@@ -149,6 +151,15 @@ final class NotificationsModule implements ModuleInterface {
         );
 
         add_action(
+            'association_manager_field_pending_approval',
+            function ( Member $member, string $fieldKey ) use ( $dispatcher, $fieldRegistry ): void {
+                $this->handleFieldPendingApproval( $dispatcher, $fieldRegistry, $member, $fieldKey );
+            },
+            10,
+            2
+        );
+
+        add_action(
             'rest_api_init',
             function () use ( $templates ): void {
 				( new NotificationsController( $templates ) )->registerRoutes();
@@ -185,6 +196,30 @@ final class NotificationsModule implements ModuleInterface {
                 'member_number' => $member->memberNumber ?? '',
                 'type_key'      => $certificate->typeKey,
                 'issued_at'     => $certificate->issuedAt,
+            ]
+        );
+    }
+
+    /**
+     * Fired by Portal's member-facing update-file handler (not from
+     * Core\Fields itself, which has no notification-system dependency
+     * at all - see ADR-023 addendum) once per field a member's upload
+     * routed to a pending value rather than applying immediately.
+     */
+    private function handleFieldPendingApproval(
+        NotificationDispatcher $dispatcher,
+        FieldRegistry $fieldRegistry,
+        Member $member,
+        string $fieldKey
+    ): void {
+        $field = $fieldRegistry->get( 'member', $fieldKey );
+
+        $dispatcher->notify(
+            'member_field_pending_approval',
+            get_option( 'admin_email' ),
+            [
+                'member_number' => $member->memberNumber ?? '',
+                'field_label'   => $field !== null ? $field->label : $fieldKey,
             ]
         );
     }

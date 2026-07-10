@@ -4,6 +4,7 @@
     var TYPES_WITH_LENGTH = ['text', 'textarea'];
     var TYPES_WITH_VALUE = ['number'];
     var TYPE_WITH_OPTIONS = 'select';
+    var TYPE_WITH_APPROVAL = 'file';
 
     function parseOptionsText(raw) {
         return raw
@@ -106,6 +107,7 @@
             var optionsRow = document.getElementById('am-field-options-row');
             var lengthRow = document.getElementById('am-field-length-row');
             var valueRow = document.getElementById('am-field-value-row');
+            var approvalRow = document.getElementById('am-field-approval-row');
 
             if (optionsRow) {
                 optionsRow.style.display = type === TYPE_WITH_OPTIONS ? '' : 'none';
@@ -115,6 +117,9 @@
             }
             if (valueRow) {
                 valueRow.style.display = TYPES_WITH_VALUE.indexOf(type) !== -1 ? '' : 'none';
+            }
+            if (approvalRow) {
+                approvalRow.style.display = type === TYPE_WITH_APPROVAL ? '' : 'none';
             }
         }
 

@@ -46,6 +46,7 @@ final class PortalServiceTest extends TestCase
     private NotificationTemplateRepository $notificationTemplates;
     private NotificationDispatcher $dispatcher;
     private FieldRegistry $fieldRegistry;
+    private FieldValueRepository $fieldValueRepository;
     private FieldValueService $fieldValueService;
     private PortalService $service;
 
@@ -73,9 +74,10 @@ final class PortalServiceTest extends TestCase
         );
 
         $this->fieldRegistry = new FieldRegistry();
+        $this->fieldValueRepository = new FieldValueRepository();
         $this->fieldValueService = new FieldValueService(
             $this->fieldRegistry,
-            new FieldValueRepository(),
+            $this->fieldValueRepository,
             new FieldValidator(),
         );
 
@@ -90,6 +92,7 @@ final class PortalServiceTest extends TestCase
             new NotificationService($this->notificationQueue),
             $this->fieldRegistry,
             $this->fieldValueService,
+            $this->fieldValueRepository,
         );
 
         $this->setNow('2026-01-01 00:00:00');
@@ -292,5 +295,103 @@ final class PortalServiceTest extends TestCase
         // transition (transitionStatus() would throw \LogicException).
         $this->service->submitForApproval($pending, []);
         $this->assertCount(1, $this->firedActionsNamed('association_manager_member_status_changed'));
+    }
+
+    public function testEditableFileFieldsForOnlyReturnsFileTypeFields(): void
+    {
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'specialty',
+            label: 'Specialty',
+            type: FieldDefinition::TYPE_TEXT,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $rows = $this->service->editableFileFieldsFor($member);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('id_document', $rows[0]['field']->key);
+    }
+
+    public function testEditableFileFieldsForIsAvailableForAnActiveMemberUnlikeCanEditProfile(): void
+    {
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $active = $this->memberService->activateMember($id);
+
+        $this->assertFalse($this->service->canEditProfile($active), 'the general profile lock must still apply');
+        $this->assertCount(1, $this->service->editableFileFieldsFor($active), 'file fields must stay reachable regardless');
+    }
+
+    public function testEditableFileFieldsForReportsCurrentAndPendingValues(): void
+    {
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+            requiresApprovalToChange: true,
+        ));
+
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $active = $this->memberService->activateMember($id);
+
+        $this->fieldValueRepository->set('member', $id, 'id_document', '100');
+        $this->fieldValueRepository->setPending('member', $id, 'id_document', '200');
+
+        $rows = $this->service->editableFileFieldsFor($active);
+
+        $this->assertSame('100', $rows[0]['value']);
+        $this->assertSame('200', $rows[0]['pending']);
+    }
+
+    public function testUpdateFileFieldsRoutesAReplacementToPendingWhenTheFieldRequiresApproval(): void
+    {
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+            requiresApprovalToChange: true,
+        ));
+
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $active = $this->memberService->activateMember($id);
+
+        $GLOBALS['__am_test_media_upload_result'] = 100;
+        $this->service->updateFileFields($active, $this->fileUpload('id_document', 'first.pdf'));
+
+        $GLOBALS['__am_test_media_upload_result'] = 200;
+        $pending = $this->service->updateFileFields($active, $this->fileUpload('id_document', 'replacement.pdf'));
+
+        $this->assertSame(['id_document'], $pending);
+        $this->assertSame('100', $this->fieldValueService->valuesFor('member', $id)['id_document'], 'the live value must stay the old file until approved');
+    }
+
+    /**
+     * @return array{name: array<string, string>, type: array<string, string>, tmp_name: array<string, string>, error: array<string, int>, size: array<string, int>}
+     */
+    private function fileUpload(string $fieldKey, string $fileName): array
+    {
+        return [
+            'name' => [$fieldKey => $fileName],
+            'type' => [$fieldKey => 'application/pdf'],
+            'tmp_name' => [$fieldKey => '/tmp/fake'],
+            'error' => [$fieldKey => 0],
+            'size' => [$fieldKey => 123],
+        ];
     }
 }
