@@ -42,9 +42,11 @@ defined('ABSPATH') || exit;
                 </tbody>
             </table>
             <p class="description"><?php esc_html_e('Dry run shows what would happen without writing anything. Commit actually creates/updates members - running it again on the same data is safe and will not create duplicates.', 'association-manager'); ?></p>
-            <?php submit_button(__('Preview (dry run)', 'association-manager'), 'secondary', 'mode', false, ['name' => 'mode', 'value' => 'dry_run']); ?>
-            &nbsp;
-            <?php submit_button(__('Commit import', 'association-manager'), 'primary', 'mode', false, ['name' => 'mode', 'value' => 'commit']); ?>
+            <p class="submit">
+                <button type="submit" name="mode" value="dry_run" class="button button-secondary"><?php esc_html_e('Preview (dry run)', 'association-manager'); ?></button>
+                &nbsp;
+                <button type="submit" name="mode" value="commit" class="button button-primary"><?php esc_html_e('Commit import', 'association-manager'); ?></button>
+            </p>
         </form>
     <?php endif; ?>
 
