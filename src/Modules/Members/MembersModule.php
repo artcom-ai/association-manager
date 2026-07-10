@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace AssociationManager\Modules\Members;
 
 use AssociationManager\Core\Admin\AdminMenu;
-use AssociationManager\Core\Admin\DashboardPage;
 use AssociationManager\Core\Container;
 use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\FieldRegistry;
@@ -88,12 +87,17 @@ final class MembersModule implements ModuleInterface {
 
         // EditMemberPage is registered (for routing/capability checks) but
         // isn't a nav item - only reachable via the "Edit fields" link.
+        // Deliberately hidden via CSS, not remove_submenu_page(): removing
+        // the entry from $submenu before admin.php resolves its own
+        // page-hook/capability lookup can break that resolution on some
+        // WordPress versions (produces "Sorry, you are not allowed to
+        // access this page." even for a manage_options user) - CSS keeps
+        // WordPress's own menu/capability machinery completely untouched.
         add_action(
-            'admin_menu',
+            'admin_head',
             static function (): void {
-				remove_submenu_page( DashboardPage::SLUG, EditMemberPage::SLUG );
-			},
-            999
+				echo '<style>#adminmenu a[href*="page=' . esc_attr( EditMemberPage::SLUG ) . '"] { display: none; }</style>';
+			}
         );
 
         add_action(
