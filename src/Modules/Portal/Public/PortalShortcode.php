@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Modules\Portal\Public;
 
+use AssociationManager\Core\Fields\Admin\FieldRenderer;
 use AssociationManager\Modules\Portal\Services\PortalService;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,6 +12,8 @@ defined( 'ABSPATH' ) || exit;
 final class PortalShortcode {
 
     public const TAG = 'association_manager_portal';
+
+    private const PROFILE_ERRORS_TRANSIENT_PREFIX = 'am_profile_errors_';
 
     public function __construct(
         private readonly PortalService $service
@@ -42,10 +45,21 @@ final class PortalShortcode {
             return '<p>' . esc_html__( 'Your account is not yet linked to a member record. Please contact the association.', 'association-manager' ) . '</p>';
         }
 
-        $documents     = $this->service->visibleDocuments();
-        $certificates  = $this->service->certificatesFor( $member );
-        $notifications = $this->service->notificationsFor( $member );
-        $customFields  = $this->service->customFieldsFor( $member );
+        $documents      = $this->service->visibleDocuments();
+        $certificates   = $this->service->certificatesFor( $member );
+        $notifications  = $this->service->notificationsFor( $member );
+        $customFields   = $this->service->customFieldsFor( $member );
+        $canEditProfile = $this->service->canEditProfile( $member );
+        $fieldRenderer  = new FieldRenderer();
+
+        $profileErrors = [];
+        $transientKey  = self::PROFILE_ERRORS_TRANSIENT_PREFIX . get_current_user_id();
+        $stored        = get_transient( $transientKey );
+
+        if ( is_array( $stored ) ) {
+            $profileErrors = $stored;
+            delete_transient( $transientKey );
+        }
 
         ob_start();
         require AM_PLUGIN_DIR . 'templates/public/portal.php';

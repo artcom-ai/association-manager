@@ -34,6 +34,7 @@ abstract class TestCase extends BaseTestCase
         $GLOBALS['__am_test_last_redirect'] = null;
         $GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
         $GLOBALS['__am_test_users'] = [];
+        $GLOBALS['__am_test_wp_user_id_counter'] = 0;
         $GLOBALS['__am_test_mail_result'] = true;
         $GLOBALS['__am_test_sent_mail'] = [];
         $GLOBALS['__am_test_deleted_attachments'] = [];

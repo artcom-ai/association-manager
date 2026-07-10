@@ -266,4 +266,71 @@ final class MemberServiceTest extends TestCase
         $this->assertSame(1, $result->total);
         $this->assertSame('FINDME', $result->items[0]->memberNumber);
     }
+
+    public function testRegisterNewMemberCreatesAWpUserAndALinkedCandidate(): void
+    {
+        $member = $this->service->registerNewMember('jane@example.test', 'a-real-password', 'Jane', 'Doe');
+
+        $this->assertSame(MemberStatus::CANDIDATE, $member->status);
+        $this->assertSame('jane@example.test', $member->email);
+        $this->assertNotNull($member->wpUserId);
+
+        $wpUser = get_userdata($member->wpUserId);
+        $this->assertNotFalse($wpUser);
+        $this->assertSame('jane@example.test', $wpUser->user_email);
+        $this->assertSame('Jane', $wpUser->first_name);
+        $this->assertSame('Doe', $wpUser->last_name);
+    }
+
+    public function testRegisterNewMemberRecordsHistoryAndFiresStatusChangedHook(): void
+    {
+        $member = $this->service->registerNewMember('jane@example.test', 'a-real-password', 'Jane', 'Doe');
+
+        $history = $this->history->forMember($member->id);
+        $this->assertCount(1, $history);
+
+        $fired = $this->firedActionsNamed('association_manager_member_status_changed');
+        $this->assertCount(1, $fired);
+        $this->assertNull($fired[0]['args'][1]);
+    }
+
+    public function testRegisterNewMemberRejectsAnInvalidEmail(): void
+    {
+        $this->expectException(\AssociationManager\Modules\Members\Domain\MemberRegistrationException::class);
+
+        $this->service->registerNewMember('not-an-email', 'a-real-password', 'Jane', 'Doe');
+    }
+
+    public function testRegisterNewMemberRejectsADuplicateEmail(): void
+    {
+        $this->service->registerNewMember('jane@example.test', 'a-real-password', 'Jane', 'Doe');
+
+        try {
+            $this->service->registerNewMember('jane@example.test', 'another-password', 'Jane', 'Smith');
+            $this->fail('Expected MemberRegistrationException.');
+        } catch (\AssociationManager\Modules\Members\Domain\MemberRegistrationException $e) {
+            $this->assertArrayHasKey('email', $e->errors());
+        }
+    }
+
+    public function testRegisterNewMemberRejectsAShortPassword(): void
+    {
+        try {
+            $this->service->registerNewMember('jane@example.test', 'short', 'Jane', 'Doe');
+            $this->fail('Expected MemberRegistrationException.');
+        } catch (\AssociationManager\Modules\Members\Domain\MemberRegistrationException $e) {
+            $this->assertArrayHasKey('password', $e->errors());
+        }
+    }
+
+    public function testRegisterNewMemberRejectsBlankNames(): void
+    {
+        try {
+            $this->service->registerNewMember('jane@example.test', 'a-real-password', '', '  ');
+            $this->fail('Expected MemberRegistrationException.');
+        } catch (\AssociationManager\Modules\Members\Domain\MemberRegistrationException $e) {
+            $this->assertArrayHasKey('first_name', $e->errors());
+            $this->assertArrayHasKey('last_name', $e->errors());
+        }
+    }
 }

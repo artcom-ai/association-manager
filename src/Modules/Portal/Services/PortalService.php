@@ -13,6 +13,7 @@ use AssociationManager\Modules\Certificates\Services\CertificateService;
 use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Services\DocumentService;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Services\MemberService;
 use AssociationManager\Modules\Notifications\Domain\QueuedNotification;
 use AssociationManager\Modules\Notifications\Services\NotificationService;
@@ -127,5 +128,39 @@ final class PortalService {
         }
 
         return $rows;
+    }
+
+    /**
+     * Profile editing is only available during onboarding - candidate
+     * (registered, hasn't submitted yet) or pending_approval (submitted,
+     * admin hasn't reviewed yet, still fixable). Once active, the Portal
+     * reverts to read-only - this deliberately doesn't reopen the "no
+     * full profile editing" decision for already-approved members.
+     */
+    public function canEditProfile( Member $member ): bool {
+        return in_array( $member->status, [ MemberStatus::CANDIDATE, MemberStatus::PENDING_APPROVAL ], true );
+    }
+
+    /**
+     * Saves the submitted custom field values, then transitions candidate
+     * -> pending_approval (which fires the existing member-status-changed
+     * hook, so NotificationsModule can alert the admin - no separate
+     * notification wiring needed here). Idempotent on the status: a
+     * member editing again while already pending_approval just updates
+     * their values without a second transition (transitionStatus()
+     * rejects a same-status transition outright). Lets
+     * FieldValidationException propagate - the caller (the admin-post
+     * handler) is expected to catch it and redisplay the form.
+     *
+     * @param array<string, mixed> $submittedValues
+     */
+    public function submitForApproval( Member $member, array $submittedValues ): Member {
+        $this->fieldValueService->save( self::MEMBER_ENTITY_TYPE, $member->requireId(), $submittedValues );
+
+        if ( $member->status === MemberStatus::PENDING_APPROVAL ) {
+            return $member;
+        }
+
+        return $this->members->transitionStatus( $member->requireId(), MemberStatus::PENDING_APPROVAL );
     }
 }

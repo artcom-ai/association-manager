@@ -20,6 +20,7 @@ use AssociationManager\Modules\Documents\Domain\Document;
 use AssociationManager\Modules\Documents\Repositories\DocumentRepository;
 use AssociationManager\Modules\Documents\Services\DocumentService;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
 use AssociationManager\Modules\Members\Domain\MembershipPlanRegistry;
 use AssociationManager\Modules\Members\Repositories\MemberRepository;
@@ -240,5 +241,56 @@ final class PortalServiceTest extends TestCase
 
         $this->assertCount(1, $rows);
         $this->assertNull($rows[0]['value']);
+    }
+
+    public function testCanEditProfileIsTrueForCandidateAndPendingApproval(): void
+    {
+        $candidateId = $this->members->insert(Member::draft(null, 'individual'));
+        $candidate = $this->members->find($candidateId);
+        $this->assertTrue($this->service->canEditProfile($candidate));
+
+        $pending = $this->memberService->transitionStatus($candidateId, MemberStatus::PENDING_APPROVAL);
+        $this->assertTrue($this->service->canEditProfile($pending));
+    }
+
+    public function testCanEditProfileIsFalseOnceActive(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $active = $this->memberService->activateMember($id);
+
+        $this->assertFalse($this->service->canEditProfile($active));
+    }
+
+    public function testSubmitForApprovalSavesFieldsAndTransitionsFromCandidate(): void
+    {
+        $this->fieldRegistry->register('member', new FieldDefinition(
+            key: 'specialty',
+            label: 'Specialty',
+            type: FieldDefinition::TYPE_TEXT,
+            visibility: FieldDefinition::VISIBILITY_PRIVATE,
+        ));
+
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $updated = $this->service->submitForApproval($member, ['specialty' => 'Cardiology']);
+
+        $this->assertSame(MemberStatus::PENDING_APPROVAL, $updated->status);
+        $values = $this->fieldValueService->valuesFor('member', $id);
+        $this->assertSame('Cardiology', $values['specialty']);
+    }
+
+    public function testSubmitForApprovalFiresTheStatusChangedHookOnlyOnFirstSubmission(): void
+    {
+        $id = $this->members->insert(Member::draft(null, 'individual'));
+        $member = $this->members->find($id);
+
+        $pending = $this->service->submitForApproval($member, []);
+        $this->assertCount(1, $this->firedActionsNamed('association_manager_member_status_changed'));
+
+        // Re-saving while still pending must not attempt a same-status
+        // transition (transitionStatus() would throw \LogicException).
+        $this->service->submitForApproval($pending, []);
+        $this->assertCount(1, $this->firedActionsNamed('association_manager_member_status_changed'));
     }
 }

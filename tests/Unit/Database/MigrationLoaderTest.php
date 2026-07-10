@@ -34,6 +34,7 @@ final class MigrationLoaderTest extends TestCase
                 '014_seed_document_certificate_notification_templates',
                 '015_add_status_to_certificates_table',
                 '016_add_import_source_to_members_table',
+                '017_seed_member_submitted_for_approval_template',
             ],
             $ids
         );

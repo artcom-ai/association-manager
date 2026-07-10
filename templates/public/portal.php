@@ -9,6 +9,9 @@ defined('ABSPATH') || exit;
 /** @var \AssociationManager\Modules\Certificates\Domain\Certificate[] $certificates */
 /** @var \AssociationManager\Modules\Notifications\Domain\QueuedNotification[] $notifications */
 /** @var array<int, array{field: \AssociationManager\Core\Fields\FieldDefinition, value: ?string}> $customFields */
+/** @var bool $canEditProfile */
+/** @var \AssociationManager\Core\Fields\Admin\FieldRenderer $fieldRenderer */
+/** @var array<string, string[]> $profileErrors */
 
 $notificationStatusLabels = [
     'pending' => __('Pending', 'association-manager'),
@@ -20,25 +23,62 @@ $notificationStatusLabels = [
 <div class="am-portal">
     <section class="am-portal-profile">
         <h2><?php esc_html_e('Profile', 'association-manager'); ?></h2>
-        <table>
-            <tbody>
-            <tr>
-                <th><?php esc_html_e('Member #', 'association-manager'); ?></th>
-                <td><?php echo esc_html($member->memberNumber ?? '—'); ?></td>
-            </tr>
-            <tr>
-                <th><?php esc_html_e('Email', 'association-manager'); ?></th>
-                <td><?php echo esc_html($member->email ?? '—'); ?></td>
-            </tr>
-            <?php foreach ($customFields as $row) : ?>
+
+        <?php if ($canEditProfile) : ?>
+            <?php if (!empty($profileErrors)) : ?>
+                <div class="am-portal-errors">
+                    <ul>
+                        <?php foreach ($profileErrors as $fieldErrors) : ?>
+                            <?php foreach ($fieldErrors as $message) : ?>
+                                <li><?php echo esc_html($message); ?></li>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <?php wp_nonce_field('association_manager_submit_profile'); ?>
+                <input type="hidden" name="action" value="association_manager_submit_profile" />
+                <table class="form-table">
+                    <tbody>
+                    <tr>
+                        <th><?php esc_html_e('Member #', 'association-manager'); ?></th>
+                        <td><?php echo esc_html($member->memberNumber ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e('Email', 'association-manager'); ?></th>
+                        <td><?php echo esc_html($member->email ?? '—'); ?></td>
+                    </tr>
+                    <?php foreach ($customFields as $row) : ?>
+                        <?php $fieldRenderer->render($row['field'], $row['value']); ?>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="description"><?php esc_html_e('Fill in your details, then submit for review. An administrator will approve your membership.', 'association-manager'); ?></p>
+                <p><button type="submit" class="button button-primary"><?php esc_html_e('Submit for approval', 'association-manager'); ?></button></p>
+            </form>
+        <?php else : ?>
+            <table>
+                <tbody>
                 <tr>
-                    <th><?php echo esc_html($row['field']->label); ?></th>
-                    <td><?php echo esc_html($row['value'] ?? '—'); ?></td>
+                    <th><?php esc_html_e('Member #', 'association-manager'); ?></th>
+                    <td><?php echo esc_html($member->memberNumber ?? '—'); ?></td>
                 </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-        <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>
+                <tr>
+                    <th><?php esc_html_e('Email', 'association-manager'); ?></th>
+                    <td><?php echo esc_html($member->email ?? '—'); ?></td>
+                </tr>
+                <?php foreach ($customFields as $row) : ?>
+                    <tr>
+                        <th><?php echo esc_html($row['field']->label); ?></th>
+                        <td><?php echo esc_html($row['value'] ?? '—'); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>
+        <?php endif; ?>
     </section>
 
     <section class="am-portal-status">

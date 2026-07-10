@@ -7,6 +7,7 @@ namespace AssociationManager\Modules\Members\Services;
 use AssociationManager\Core\Pagination\PaginatedResult;
 use AssociationManager\Core\Pagination\PaginationParams;
 use AssociationManager\Modules\Members\Domain\Member;
+use AssociationManager\Modules\Members\Domain\MemberRegistrationException;
 use AssociationManager\Modules\Members\Domain\MemberSearchCriteria;
 use AssociationManager\Modules\Members\Domain\MemberStatus;
 use AssociationManager\Modules\Members\Domain\MemberStatusRegistry;
@@ -38,6 +39,58 @@ final class MemberService {
         do_action( 'association_manager_member_status_changed', $member, null, $member->status );
 
         return $member;
+    }
+
+    /**
+     * Self-registration entry point: creates a WP user (role "subscriber")
+     * and a linked Member record in one step, starting at the normal
+     * MemberStatus::CANDIDATE default. Validation lives here, not in the
+     * Shortcode, so any future registration surface (a REST endpoint, a
+     * different form) gets the same rules for free. Throws rather than
+     * returning errors, matching FieldValidationException's shape - the
+     * caller is expected to catch it and re-render the form.
+     */
+    public function registerNewMember( string $email, string $password, string $firstName, string $lastName ): Member {
+        $errors = [];
+
+        if ( ! is_email( $email ) ) {
+            $errors['email'][] = __( 'Please enter a valid email address.', 'association-manager' );
+        } elseif ( email_exists( $email ) ) {
+            $errors['email'][] = __( 'An account with this email already exists.', 'association-manager' );
+        }
+
+        if ( strlen( $password ) < 8 ) {
+            $errors['password'][] = __( 'Password must be at least 8 characters.', 'association-manager' );
+        }
+
+        if ( trim( $firstName ) === '' ) {
+            $errors['first_name'][] = __( 'First name is required.', 'association-manager' );
+        }
+
+        if ( trim( $lastName ) === '' ) {
+            $errors['last_name'][] = __( 'Last name is required.', 'association-manager' );
+        }
+
+        if ( $errors !== [] ) {
+            throw new MemberRegistrationException( $errors );
+        }
+
+        $wpUserId = wp_insert_user(
+            [
+				'user_login' => $this->generateUsername( $email ),
+				'user_email' => $email,
+				'user_pass'  => $password,
+				'first_name' => $firstName,
+				'last_name'  => $lastName,
+				'role'       => 'subscriber',
+			]
+        );
+
+        if ( is_wp_error( $wpUserId ) ) {
+            throw new MemberRegistrationException( [ 'email' => [ $wpUserId->get_error_message() ] ] );
+        }
+
+        return $this->createMember( $wpUserId, null, $email );
     }
 
     public function activateMember( int $memberId, ?int $changedBy = null ): Member {
@@ -437,6 +490,27 @@ final class MemberService {
         do_action( 'association_manager_member_renewed', $renewed, $newExpiresAt );
 
         return $renewed;
+    }
+
+    /**
+     * A WP login can't just be the raw email; derives a slug from its
+     * local part and disambiguates against existing usernames rather
+     * than requiring the registrant to invent one themselves.
+     */
+    private function generateUsername( string $email ): string {
+        $local = strstr( $email, '@', true );
+        $base  = preg_replace( '/[^a-z0-9]/', '', strtolower( $local !== false ? $local : $email ) ) ?? '';
+        $base  = $base !== '' ? $base : 'member';
+
+        $username = $base;
+        $suffix   = 1;
+
+        while ( username_exists( $username ) ) {
+            $username = $base . $suffix;
+            ++$suffix;
+        }
+
+        return $username;
     }
 
     private function mustFind( int $id ): Member {

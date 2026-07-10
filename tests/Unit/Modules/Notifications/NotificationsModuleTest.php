@@ -63,7 +63,7 @@ final class NotificationsModuleTest extends TestCase
 
         $this->setNow('2026-01-01 00:00:00');
 
-        foreach (['admin_new_member', 'member_activated', 'member_suspended', 'member_archived', 'membership_renewed', 'document_published', 'certificate_issued'] as $eventKey) {
+        foreach (['admin_new_member', 'member_activated', 'member_suspended', 'member_archived', 'member_submitted_for_approval', 'membership_renewed', 'document_published', 'certificate_issued'] as $eventKey) {
             $this->templates->save(new NotificationTemplate(
                 null,
                 $eventKey,
@@ -101,6 +101,19 @@ final class NotificationsModuleTest extends TestCase
         $this->assertContains('member_activated', $eventKeys);
         $this->assertContains('member_suspended', $eventKeys);
         $this->assertContains('member_archived', $eventKeys);
+    }
+
+    public function testPendingApprovalNotifiesAdminAddressNotTheMember(): void
+    {
+        $this->setOption('admin_email', 'admin@example.test');
+        $member = new Member(1, 'uuid-1', null, 'M-001', 'jane@example.test', 'pending_approval', 'individual', null, null, null);
+
+        $this->invokeHandleMemberStatusChanged($member, 'candidate', 'pending_approval');
+
+        $due = $this->queue->findDue('2026-01-01 00:00:00');
+        $this->assertCount(1, $due);
+        $this->assertSame('member_submitted_for_approval', $due[0]->eventKey);
+        $this->assertSame('admin@example.test', $due[0]->recipient);
     }
 
     public function testStatusWithNoMappedEventKeyDoesNotEnqueue(): void

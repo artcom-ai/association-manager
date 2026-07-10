@@ -128,9 +128,46 @@ $GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
 function get_option($key, $default = false) { return $GLOBALS['__am_test_options'][$key] ?? $default; }
 function update_option($key, $value, $autoload = null) { $GLOBALS['__am_test_options'][$key] = $value; return true; }
 
-// --- WP users (for Member -> WP account email fallback) ---
+// --- WP users (for Member -> WP account email fallback, and self-registration) ---
 $GLOBALS['__am_test_users'] = [];
+$GLOBALS['__am_test_wp_user_id_counter'] = 0;
 function get_userdata($userId) { return $GLOBALS['__am_test_users'][$userId] ?? false; }
+function email_exists($email) {
+    foreach ($GLOBALS['__am_test_users'] as $id => $user) {
+        if (($user->user_email ?? null) === $email) {
+            return $id;
+        }
+    }
+    return false;
+}
+function username_exists($username) {
+    foreach ($GLOBALS['__am_test_users'] as $id => $user) {
+        if (($user->user_login ?? null) === $username) {
+            return $id;
+        }
+    }
+    return false;
+}
+function wp_insert_user($userdata) {
+    $email = is_array($userdata) ? ($userdata['user_email'] ?? '') : ($userdata->user_email ?? '');
+    if ($email !== '' && email_exists($email)) {
+        return new WP_Error('existing_user_email', 'Sorry, that email address is already used.');
+    }
+    $id = ++$GLOBALS['__am_test_wp_user_id_counter'];
+    $GLOBALS['__am_test_users'][$id] = (object) [
+        'ID' => $id,
+        'user_login' => $userdata['user_login'] ?? '',
+        'user_email' => $email,
+        'first_name' => $userdata['first_name'] ?? '',
+        'last_name' => $userdata['last_name'] ?? '',
+    ];
+    return $id;
+}
+function wp_set_current_user($id) {
+    $GLOBALS['__am_test_current_user_id'] = $id;
+    return $GLOBALS['__am_test_users'][$id] ?? null;
+}
+function wp_set_auth_cookie($userId, $remember = false) { /* no-op */ }
 
 // --- mail - tests configure success/failure and inspect what was "sent" ---
 $GLOBALS['__am_test_mail_result'] = true;

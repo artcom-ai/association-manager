@@ -8,10 +8,11 @@ defined( 'ABSPATH' ) || exit;
 
 final class MemberStatus {
 
-    public const CANDIDATE = 'candidate';
-    public const ACTIVE    = 'active';
-    public const INACTIVE  = 'inactive';
-    public const SUSPENDED = 'suspended';
-    public const EXPIRED   = 'expired';
-    public const HONORARY  = 'honorary';
+    public const CANDIDATE        = 'candidate';
+    public const PENDING_APPROVAL = 'pending_approval';
+    public const ACTIVE           = 'active';
+    public const INACTIVE         = 'inactive';
+    public const SUSPENDED        = 'suspended';
+    public const EXPIRED          = 'expired';
+    public const HONORARY         = 'honorary';
 }

@@ -58,6 +58,7 @@ final class MemberStatusRegistry {
 
     private function registerBuiltIns(): void {
         $this->register( new StatusDefinition( MemberStatus::CANDIDATE, 'Candidate', isActive: false, isTerminal: false ) );
+        $this->register( new StatusDefinition( MemberStatus::PENDING_APPROVAL, 'Pending Approval', isActive: false, isTerminal: false ) );
         $this->register( new StatusDefinition( MemberStatus::ACTIVE, 'Active', isActive: true, isTerminal: false ) );
         $this->register( new StatusDefinition( MemberStatus::INACTIVE, 'Inactive', isActive: false, isTerminal: true ) );
         $this->register( new StatusDefinition( MemberStatus::SUSPENDED, 'Suspended', isActive: false, isTerminal: false ) );
@@ -66,6 +67,10 @@ final class MemberStatusRegistry {
 
         $this->allowTransition( MemberStatus::CANDIDATE, MemberStatus::ACTIVE );
         $this->allowTransition( MemberStatus::CANDIDATE, MemberStatus::INACTIVE );
+        $this->allowTransition( MemberStatus::CANDIDATE, MemberStatus::PENDING_APPROVAL );
+        $this->allowTransition( MemberStatus::PENDING_APPROVAL, MemberStatus::ACTIVE );
+        $this->allowTransition( MemberStatus::PENDING_APPROVAL, MemberStatus::INACTIVE );
+        $this->allowTransition( MemberStatus::PENDING_APPROVAL, MemberStatus::CANDIDATE );
         $this->allowTransition( MemberStatus::ACTIVE, MemberStatus::SUSPENDED );
         $this->allowTransition( MemberStatus::ACTIVE, MemberStatus::EXPIRED );
         $this->allowTransition( MemberStatus::ACTIVE, MemberStatus::INACTIVE );

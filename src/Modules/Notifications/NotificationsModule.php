@@ -207,6 +207,16 @@ final class NotificationsModule implements ModuleInterface {
             return;
         }
 
+        // Unlike the other transitions below (which notify the member
+        // about their own status), this one notifies the admin/
+        // secretariat - a member just finished their profile and is
+        // waiting for review, same recipient as admin_new_member.
+        if ( $newStatus === MemberStatus::PENDING_APPROVAL ) {
+            $dispatcher->notify( 'member_submitted_for_approval', get_option( 'admin_email' ), $placeholders );
+
+            return;
+        }
+
         $eventKey = match ( $newStatus ) {
             MemberStatus::ACTIVE => 'member_activated',
             MemberStatus::SUSPENDED => 'member_suspended',

@@ -26,6 +26,7 @@ final class MemberStatusRegistryTest extends TestCase
         $this->assertEqualsCanonicalizing(
             [
                 MemberStatus::CANDIDATE,
+                MemberStatus::PENDING_APPROVAL,
                 MemberStatus::ACTIVE,
                 MemberStatus::INACTIVE,
                 MemberStatus::SUSPENDED,
@@ -61,6 +62,10 @@ final class MemberStatusRegistryTest extends TestCase
         yield 'expired to inactive' => [MemberStatus::EXPIRED, MemberStatus::INACTIVE];
         yield 'honorary to inactive' => [MemberStatus::HONORARY, MemberStatus::INACTIVE];
         yield 'inactive to active' => [MemberStatus::INACTIVE, MemberStatus::ACTIVE];
+        yield 'candidate to pending approval' => [MemberStatus::CANDIDATE, MemberStatus::PENDING_APPROVAL];
+        yield 'pending approval to active' => [MemberStatus::PENDING_APPROVAL, MemberStatus::ACTIVE];
+        yield 'pending approval to inactive' => [MemberStatus::PENDING_APPROVAL, MemberStatus::INACTIVE];
+        yield 'pending approval to candidate' => [MemberStatus::PENDING_APPROVAL, MemberStatus::CANDIDATE];
     }
 
     /**
@@ -82,6 +87,8 @@ final class MemberStatusRegistryTest extends TestCase
         yield 'inactive to suspended' => [MemberStatus::INACTIVE, MemberStatus::SUSPENDED];
         yield 'honorary to suspended' => [MemberStatus::HONORARY, MemberStatus::SUSPENDED];
         yield 'same status is never a transition' => [MemberStatus::ACTIVE, MemberStatus::ACTIVE];
+        yield 'pending approval to suspended' => [MemberStatus::PENDING_APPROVAL, MemberStatus::SUSPENDED];
+        yield 'active to pending approval' => [MemberStatus::ACTIVE, MemberStatus::PENDING_APPROVAL];
     }
 
     public function testCustomStatusCanBeRegisteredByAnImplementation(): void
