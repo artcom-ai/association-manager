@@ -32,7 +32,7 @@ final class CertificateTemplatesPage implements AdminPageInterface {
     }
 
     public function menuTitle(): string {
-        return __( 'Certificates', 'association-manager' );
+        return __( 'Certificate Templates', 'association-manager' );
     }
 
     public function capability(): string {
