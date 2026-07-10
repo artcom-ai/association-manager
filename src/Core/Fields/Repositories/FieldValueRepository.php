@@ -88,4 +88,19 @@ final class FieldValueRepository implements FieldValueRepositoryInterface {
             )
         );
     }
+
+    public function deleteForField( string $entityType, string $fieldKey ): void {
+        global $wpdb;
+
+        $table = DatabaseManager::table( 'field_values' );
+
+        $wpdb->delete(
+            $table,
+            [
+				'entity_type' => $entityType,
+				'field_key'   => $fieldKey,
+			],
+            [ '%s', '%s' ]
+        );
+    }
 }

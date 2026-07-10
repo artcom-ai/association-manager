@@ -114,8 +114,20 @@ final class FakeWpdb
      */
     public function update(string $table, array $data, array $where, mixed $format = null, mixed $whereFormat = null): bool
     {
-        $id = $where['id'];
-        $this->tables[$table][$id] = array_merge($this->tables[$table][$id], $data);
+        foreach ($this->tables[$table] ?? [] as $rowId => $row) {
+            $matches = true;
+
+            foreach ($where as $column => $value) {
+                if ((string) ($row[$column] ?? null) !== (string) $value) {
+                    $matches = false;
+                    break;
+                }
+            }
+
+            if ($matches) {
+                $this->tables[$table][$rowId] = array_merge($row, $data);
+            }
+        }
 
         return true;
     }

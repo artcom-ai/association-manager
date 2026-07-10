@@ -7,6 +7,8 @@ defined('ABSPATH') || exit;
 /** @var \AssociationManager\Modules\Importers\ImportSourceInterface[] $sources */
 /** @var array<string, mixed>|false $report */
 /** @var ?string $noticeType */
+
+$createdCount = isset($_GET['am_created_count']) ? (int) $_GET['am_created_count'] : 0;
 ?>
 <div class="wrap">
     <h1><?php esc_html_e('Import Members', 'association-manager'); ?></h1>
@@ -19,6 +21,18 @@ defined('ABSPATH') || exit;
         <div class="notice notice-success"><p><?php esc_html_e('Dry run complete - nothing was written. Review the report below.', 'association-manager'); ?></p></div>
     <?php elseif ($noticeType === 'commit_done') : ?>
         <div class="notice notice-success"><p><?php esc_html_e('Import committed. Review the report below.', 'association-manager'); ?></p></div>
+    <?php elseif ($noticeType === 'fields_created') : ?>
+        <div class="notice notice-success">
+            <p>
+                <?php
+                printf(
+                    /* translators: %d: number of fields created */
+                    esc_html(_n('%d field created. Review labels/types/visibility on the Member Fields page.', '%d fields created. Review labels/types/visibility on the Member Fields page.', $createdCount, 'association-manager')),
+                    (int) $createdCount
+                );
+                ?>
+            </p>
+        </div>
     <?php endif; ?>
 
     <?php if (empty($sources)) : ?>
@@ -46,6 +60,30 @@ defined('ABSPATH') || exit;
                 <button type="submit" name="mode" value="dry_run" class="button button-secondary"><?php esc_html_e('Preview (dry run)', 'association-manager'); ?></button>
                 &nbsp;
                 <button type="submit" name="mode" value="commit" class="button button-primary"><?php esc_html_e('Commit import', 'association-manager'); ?></button>
+            </p>
+        </form>
+
+        <h2><?php esc_html_e('Recreate fields from source data', 'association-manager'); ?></h2>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <?php wp_nonce_field('association_manager_discover_fields'); ?>
+            <input type="hidden" name="action" value="association_manager_discover_fields" />
+            <table class="form-table">
+                <tbody>
+                <tr>
+                    <th><label for="am-discover-source"><?php esc_html_e('Source', 'association-manager'); ?></label></th>
+                    <td>
+                        <select id="am-discover-source" name="source">
+                            <?php foreach ($sources as $source) : ?>
+                                <option value="<?php echo esc_attr($source->key()); ?>"><?php echo esc_html($source->label()); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="description"><?php esc_html_e('Scans the source for fields with no mapping yet and creates a Member Field (plain text, admin-only visibility) plus a mapping for each one - a starting point to review and refine on the Member Fields page, not a finished configuration. Running this again is safe - it skips anything already mapped.', 'association-manager'); ?></p>
+            <p class="submit">
+                <button type="submit" class="button button-secondary"><?php esc_html_e('Discover & create fields', 'association-manager'); ?></button>
             </p>
         </form>
     <?php endif; ?>
