@@ -37,7 +37,7 @@ $notificationStatusLabels = [
                 </div>
             <?php endif; ?>
 
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
                 <?php wp_nonce_field('association_manager_submit_profile'); ?>
                 <input type="hidden" name="action" value="association_manager_submit_profile" />
                 <table class="form-table">

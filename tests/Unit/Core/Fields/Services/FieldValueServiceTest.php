@@ -110,4 +110,75 @@ final class FieldValueServiceTest extends TestCase
         $this->assertSame(4242, $attachmentId);
         $this->assertSame('4242', $this->service->valuesFor('member', 1)['id_document']);
     }
+
+    public function testSaveWithUploadsHandlesAMixOfTextAndFileFields(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+        ));
+
+        $GLOBALS['__am_test_media_upload_result'] = 99;
+
+        $this->service->saveWithUploads(
+            'member',
+            1,
+            ['specialty' => 'Cardiology'],
+            [
+                'name' => ['id_document' => 'diploma.pdf'],
+                'type' => ['id_document' => 'application/pdf'],
+                'tmp_name' => ['id_document' => '/tmp/fake'],
+                'error' => ['id_document' => 0],
+                'size' => ['id_document' => 456],
+            ]
+        );
+
+        $values = $this->service->valuesFor('member', 1);
+        $this->assertSame('Cardiology', $values['specialty']);
+        $this->assertSame('99', $values['id_document']);
+    }
+
+    public function testSaveWithUploadsIgnoresAnEmptyFileInput(): void
+    {
+        $this->registry->register('member', new FieldDefinition(
+            key: 'id_document',
+            label: 'ID Document',
+            type: FieldDefinition::TYPE_FILE,
+        ));
+
+        // Browsers submit an untouched file input as an empty name with
+        // UPLOAD_ERR_NO_FILE, not by omitting it - this must not be
+        // treated as "upload a file named nothing".
+        $this->service->saveWithUploads(
+            'member',
+            1,
+            ['specialty' => 'Cardiology'],
+            [
+                'name' => ['id_document' => ''],
+                'type' => ['id_document' => ''],
+                'tmp_name' => ['id_document' => ''],
+                'error' => ['id_document' => UPLOAD_ERR_NO_FILE],
+                'size' => ['id_document' => 0],
+            ]
+        );
+
+        $values = $this->service->valuesFor('member', 1);
+        $this->assertSame('Cardiology', $values['specialty']);
+        $this->assertArrayNotHasKey('id_document', $values);
+    }
+
+    public function testSaveWithUploadsToleratesNoFileInputsAtAll(): void
+    {
+        $this->service->saveWithUploads('member', 1, ['specialty' => 'Cardiology'], null);
+
+        $this->assertSame('Cardiology', $this->service->valuesFor('member', 1)['specialty']);
+    }
+
+    public function testSaveWithUploadsStillThrowsForAnInvalidTextField(): void
+    {
+        $this->expectException(FieldValidationException::class);
+
+        $this->service->saveWithUploads('member', 1, ['education' => 'invalid'], null);
+    }
 }

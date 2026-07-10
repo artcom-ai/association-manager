@@ -216,7 +216,10 @@ final class MembersModule implements ModuleInterface {
 		];
 
         try {
-            $fieldValueService->save( 'member', $memberId, $submitted );
+            // The form has enctype="multipart/form-data" for exactly
+            // this - saveWithUploads() also handles TYPE_FILE fields,
+            // which arrive in $_FILES, not $_POST.
+            $fieldValueService->saveWithUploads( 'member', $memberId, $submitted, $_FILES['custom_fields'] ?? null );
             $redirectArgs['am_notice'] = 'saved';
         } catch ( FieldValidationException ) {
             $redirectArgs['am_notice'] = 'invalid';

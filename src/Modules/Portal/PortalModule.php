@@ -139,7 +139,7 @@ final class PortalModule implements ModuleInterface {
             : [];
 
         try {
-            $service->submitForApproval( $member, $submittedValues );
+            $service->submitForApproval( $member, $submittedValues, $_FILES['custom_fields'] ?? null );
         } catch ( FieldValidationException $e ) {
             set_transient( 'am_profile_errors_' . get_current_user_id(), $e->errors(), 5 * MINUTE_IN_SECONDS );
         }

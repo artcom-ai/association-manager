@@ -142,20 +142,22 @@ final class PortalService {
     }
 
     /**
-     * Saves the submitted custom field values, then transitions candidate
-     * -> pending_approval (which fires the existing member-status-changed
-     * hook, so NotificationsModule can alert the admin - no separate
-     * notification wiring needed here). Idempotent on the status: a
-     * member editing again while already pending_approval just updates
-     * their values without a second transition (transitionStatus()
-     * rejects a same-status transition outright). Lets
-     * FieldValidationException propagate - the caller (the admin-post
-     * handler) is expected to catch it and redisplay the form.
+     * Saves the submitted custom field values (including any TYPE_FILE
+     * uploads - see FieldValueService::saveWithUploads()), then
+     * transitions candidate -> pending_approval (which fires the existing
+     * member-status-changed hook, so NotificationsModule can alert the
+     * admin - no separate notification wiring needed here). Idempotent on
+     * the status: a member editing again while already pending_approval
+     * just updates their values without a second transition
+     * (transitionStatus() rejects a same-status transition outright).
+     * Lets FieldValidationException propagate - the caller (the
+     * admin-post handler) is expected to catch it and redisplay the form.
      *
      * @param array<string, mixed> $submittedValues
+     * @param array{name?: mixed, type?: mixed, tmp_name?: mixed, error?: mixed, size?: mixed}|null $rawFileUploads the "custom_fields" sub-array of $_FILES
      */
-    public function submitForApproval( Member $member, array $submittedValues ): Member {
-        $this->fieldValueService->save( self::MEMBER_ENTITY_TYPE, $member->requireId(), $submittedValues );
+    public function submitForApproval( Member $member, array $submittedValues, ?array $rawFileUploads = null ): Member {
+        $this->fieldValueService->saveWithUploads( self::MEMBER_ENTITY_TYPE, $member->requireId(), $submittedValues, $rawFileUploads );
 
         if ( $member->status === MemberStatus::PENDING_APPROVAL ) {
             return $member;
