@@ -36,7 +36,50 @@ function selected($a, $b) { return $a === $b ? ' selected' : ''; }
 function checked($a, $b) { return $a === $b ? ' checked' : ''; }
 function submit_button($text = '') { echo "<button>{$text}</button>"; }
 function wp_kses_post($text) { return (string) $text; }
-function dbDelta($sql) { /* no-op: FakeWpdb doesn't model real schema DDL */ }
+/**
+ * Not a real dbDelta() - just enough of a pattern-matched simulation
+ * (same philosophy as FakeWpdb itself) to let tests prove a migration's
+ * ADD-COLUMN postcondition check actually works: parses the column
+ * names out of a CREATE TABLE statement (skipping constraint/index
+ * lines like PRIMARY KEY/UNIQUE KEY) and registers each one as present
+ * on FakeWpdb, via FakeWpdb::applyCreateTableColumns() - which itself
+ * honors FakeWpdb::blockColumnAddition() so a test can simulate a
+ * specific column failing to actually be added, the way a real
+ * dbDelta() might silently fail to on a real server.
+ */
+function dbDelta($sql) {
+    global $wpdb;
+
+    if (!preg_match('/CREATE TABLE\s+(\S+)\s*\(/i', $sql, $tableMatch)) {
+        return [];
+    }
+
+    $table = $tableMatch[1];
+    $skipKeywords = ['PRIMARY', 'UNIQUE', 'KEY', 'CONSTRAINT', 'INDEX', 'FOREIGN'];
+    $columns = [];
+
+    foreach (explode("\n", $sql) as $line) {
+        $line = trim($line, " \t\r\n,");
+
+        if ($line === '' || stripos($line, 'CREATE TABLE') === 0 || str_starts_with($line, ')')) {
+            continue;
+        }
+
+        $firstWord = strtok($line, " \t");
+
+        if ($firstWord === false || in_array(strtoupper($firstWord), $skipKeywords, true)) {
+            continue;
+        }
+
+        if (preg_match('/^([a-zA-Z_][a-zA-Z0-9_]*)\s+\S/', $line, $columnMatch)) {
+            $columns[] = $columnMatch[1];
+        }
+    }
+
+    $wpdb->applyCreateTableColumns($table, $columns);
+
+    return [];
+}
 function sanitize_text_field($value) { return trim((string) $value); }
 function sanitize_textarea_field($value) { return trim((string) $value); }
 function wp_json_encode($data) { return json_encode($data); }
@@ -125,8 +168,17 @@ function media_handle_sideload($fileArray, $postId, $desc = null) {
 
 // --- options ---
 $GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
+$GLOBALS['__am_test_update_option_fails_for'] = [];
 function get_option($key, $default = false) { return $GLOBALS['__am_test_options'][$key] ?? $default; }
-function update_option($key, $value, $autoload = null) { $GLOBALS['__am_test_options'][$key] = $value; return true; }
+function update_option($key, $value, $autoload = null) {
+    $failIndex = array_search($key, $GLOBALS['__am_test_update_option_fails_for'], true);
+    if ($failIndex !== false) {
+        unset($GLOBALS['__am_test_update_option_fails_for'][$failIndex]);
+        return false;
+    }
+    $GLOBALS['__am_test_options'][$key] = $value;
+    return true;
+}
 
 // --- WP users (for Member -> WP account email fallback, and self-registration) ---
 $GLOBALS['__am_test_users'] = [];

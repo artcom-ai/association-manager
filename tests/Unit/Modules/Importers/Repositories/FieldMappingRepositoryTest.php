@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AssociationManager\Tests\Unit\Modules\Importers\Repositories;
 
+use AssociationManager\Database\DatabaseWriteException;
 use AssociationManager\Modules\Importers\Domain\FieldMapping;
 use AssociationManager\Modules\Importers\Repositories\FieldMappingRepository;
 use AssociationManager\Tests\Support\TestCase;
@@ -66,5 +67,25 @@ final class FieldMappingRepositoryTest extends TestCase
         $this->assertCount(2, $sources);
         $this->assertContains('memberpress', $sources);
         $this->assertContains('other-source', $sources);
+    }
+
+    public function testSaveThrowsWhenInsertFails(): void
+    {
+        $this->wpdb->failNextInsert('wp_am_field_mappings');
+
+        $this->expectException(DatabaseWriteException::class);
+
+        $this->repository->save('memberpress', new FieldMapping('mepr_eidikotita', 'specialty'));
+    }
+
+    public function testSaveThrowsWhenUpdateFails(): void
+    {
+        $this->repository->save('memberpress', new FieldMapping('mepr_eidikotita', 'specialty'));
+
+        $this->wpdb->failNextUpdate('wp_am_field_mappings');
+
+        $this->expectException(DatabaseWriteException::class);
+
+        $this->repository->save('memberpress', new FieldMapping('mepr_eidikotita', 'renamed_field'));
     }
 }

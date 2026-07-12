@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AssociationManager\Modules\Importers\Repositories;
 
 use AssociationManager\Database\DatabaseManager;
+use AssociationManager\Database\DatabaseWriteException;
 use AssociationManager\Modules\Importers\Domain\FieldMapping;
 
 defined( 'ABSPATH' ) || exit;
@@ -67,12 +68,18 @@ final class FieldMappingRepository implements FieldMappingRepositoryInterface {
             $data['created_at'] = $now;
             $formats[]          = '%s';
 
-            $wpdb->insert( $table, $data, $formats );
+            $result = $wpdb->insert( $table, $data, $formats );
+
+            if ( $result === false ) {
+                throw new DatabaseWriteException(
+                    "Failed to insert field mapping '{$sourceSystem}.{$mapping->sourceKey}': {$wpdb->last_error}"
+                );
+            }
 
             return;
         }
 
-        $wpdb->update(
+        $result = $wpdb->update(
             $table,
             $data,
             [
@@ -82,6 +89,12 @@ final class FieldMappingRepository implements FieldMappingRepositoryInterface {
             $formats,
             [ '%s', '%s' ]
         );
+
+        if ( $result === false ) {
+            throw new DatabaseWriteException(
+                "Failed to update field mapping '{$sourceSystem}.{$mapping->sourceKey}': {$wpdb->last_error}"
+            );
+        }
     }
 
     /**

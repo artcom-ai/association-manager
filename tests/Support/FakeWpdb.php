@@ -16,12 +16,25 @@ final class FakeWpdb
 {
     public string $prefix = 'wp_';
     public int $insert_id = 0;
+    public string $last_error = '';
+
+    /** @var array<string, bool> table name => fail the next insert() call */
+    private array $failNextInsertFor = [];
+
+    /** @var array<string, bool> table name => fail the next update() call */
+    private array $failNextUpdateFor = [];
 
     /** @var array<string, array<int, array<string, mixed>>> */
     private array $tables = [];
 
     /** @var array<string, int> */
     private array $autos = [];
+
+    /** @var array<string, array<string, bool>> table name => column name => present */
+    private array $columns = [];
+
+    /** @var array<string, bool> "table.column" => dbDelta() must not be allowed to add this column, simulating a silent failure */
+    private array $blockedColumnAdditions = [];
 
     public function get_charset_collate(): string
     {
@@ -61,6 +74,10 @@ final class FakeWpdb
 
     public function get_row(string $query, string $output = 'ARRAY_A'): ?array
     {
+        if (preg_match("/^\\s*SHOW\\s+COLUMNS\\s+FROM\\s+(\\S+)\\s+LIKE\\s+'([^']+)'/i", $query, $m)) {
+            return $this->hasColumn($m[1], $m[2]) ? ['Field' => $m[2]] : null;
+        }
+
         $table = $this->tableFromQuery($query);
         $rows = $this->applyConditions($this->rowsFor($table), $this->parseConditions($query));
 
@@ -99,6 +116,13 @@ final class FakeWpdb
      */
     public function insert(string $table, array $data, mixed $format = null): bool
     {
+        if ($this->failNextInsertFor[$table] ?? false) {
+            unset($this->failNextInsertFor[$table]);
+            $this->last_error = 'Simulated insert failure';
+
+            return false;
+        }
+
         $this->autos[$table] = ($this->autos[$table] ?? 0) + 1;
         $id = $this->autos[$table];
         $data['id'] = $id;
@@ -109,11 +133,36 @@ final class FakeWpdb
     }
 
     /**
+     * Test-only helper: the next insert() call against $table returns
+     * false (as a real failed INSERT would), instead of succeeding.
+     */
+    public function failNextInsert(string $table): void
+    {
+        $this->failNextInsertFor[$table] = true;
+    }
+
+    /**
+     * Test-only helper: the next update() call against $table returns
+     * false (as a real failed UPDATE would), instead of succeeding.
+     */
+    public function failNextUpdate(string $table): void
+    {
+        $this->failNextUpdateFor[$table] = true;
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @param array<string, mixed> $where
      */
     public function update(string $table, array $data, array $where, mixed $format = null, mixed $whereFormat = null): bool
     {
+        if ($this->failNextUpdateFor[$table] ?? false) {
+            unset($this->failNextUpdateFor[$table]);
+            $this->last_error = 'Simulated update failure';
+
+            return false;
+        }
+
         foreach ($this->tables[$table] ?? [] as $rowId => $row) {
             $matches = true;
 
@@ -204,6 +253,65 @@ final class FakeWpdb
         }
 
         return true;
+    }
+
+    /**
+     * Test-only helper: marks $table as already having $columns, as if
+     * an earlier CREATE TABLE (real or simulated) had already put them
+     * there - used to model a database where a migration already ran
+     * under a schema that included the column in question.
+     *
+     * @param string[] $columns
+     */
+    public function presetTableColumns(string $table, array $columns): void
+    {
+        foreach ($columns as $column) {
+            $this->columns[$table][$column] = true;
+        }
+    }
+
+    /**
+     * Test-only helper: the *next* attempt by dbDelta()'s stub (see
+     * tests/bootstrap.php) to add $column to $table is silently
+     * refused, even though it appears in the CREATE TABLE statement it
+     * was given - simulating dbDelta() failing to actually add a column
+     * on a real server (permissions, a locked table, etc.), which a
+     * migration relying on dbDelta() alone would otherwise never
+     * notice. One-shot, like failNextInsert()/failNextUpdate() - a
+     * later retry is not blocked, so this also models the transient
+     * condition being resolved before a retry.
+     */
+    public function blockColumnAddition(string $table, string $column): void
+    {
+        $this->blockedColumnAdditions["{$table}.{$column}"] = true;
+    }
+
+    /**
+     * Called by the dbDelta() stub in tests/bootstrap.php with the
+     * column names it parsed out of a CREATE TABLE statement - adds
+     * each one to $table's known schema, unless blockColumnAddition()
+     * was used to simulate that specific column failing to be added.
+     *
+     * @param string[] $columns
+     */
+    public function applyCreateTableColumns(string $table, array $columns): void
+    {
+        foreach ($columns as $column) {
+            $key = "{$table}.{$column}";
+
+            if ($this->blockedColumnAdditions[$key] ?? false) {
+                unset($this->blockedColumnAdditions[$key]);
+
+                continue;
+            }
+
+            $this->columns[$table][$column] = true;
+        }
+    }
+
+    public function hasColumn(string $table, string $column): bool
+    {
+        return $this->columns[$table][$column] ?? false;
     }
 
     private function tableFromQuery(string $sql): string

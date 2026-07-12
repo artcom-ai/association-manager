@@ -33,6 +33,7 @@ abstract class TestCase extends BaseTestCase
         $GLOBALS['__am_test_media_upload_result'] = 1;
         $GLOBALS['__am_test_last_redirect'] = null;
         $GLOBALS['__am_test_options'] = ['admin_email' => 'admin@example.test'];
+        $GLOBALS['__am_test_update_option_fails_for'] = [];
         $GLOBALS['__am_test_users'] = [];
         $GLOBALS['__am_test_wp_user_id_counter'] = 0;
         $GLOBALS['__am_test_mail_result'] = true;
@@ -59,6 +60,17 @@ abstract class TestCase extends BaseTestCase
     protected function setOption(string $key, mixed $value): void
     {
         $GLOBALS['__am_test_options'][$key] = $value;
+    }
+
+    /**
+     * Simulates update_option($key, ...) failing (returning false) the
+     * way a real DB write failure would, without silently changing the
+     * stored value - used to test that callers treat a failed
+     * persistence as a real failure, not a no-op.
+     */
+    protected function failNextUpdateOptionFor(string $key): void
+    {
+        $GLOBALS['__am_test_update_option_fails_for'][] = $key;
     }
 
     /**

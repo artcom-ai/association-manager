@@ -1,6 +1,7 @@
 /vendor/
 node_modules/
 /.phpunit.cache/
+/phpunit.xml
 
 .DS_Store
 Thumbs.db

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use AssociationManager\Database\DatabaseManager;
+use AssociationManager\Database\DatabaseWriteException;
 use AssociationManager\Database\MigrationInterface;
 
 return new class() implements MigrationInterface {
@@ -24,6 +25,7 @@ return new class() implements MigrationInterface {
                 type_key VARCHAR(100) NOT NULL,
                 name VARCHAR(255) NOT NULL,
                 html_body LONGTEXT NOT NULL,
+                is_default TINYINT(1) NOT NULL DEFAULT 0,
                 updated_at DATETIME NOT NULL,
                 PRIMARY KEY (id),
                 UNIQUE KEY type_key (type_key)
@@ -37,7 +39,10 @@ return new class() implements MigrationInterface {
 
     /**
      * Ship with one real, editable certificate rather than an empty
-     * table - same reasoning as migration 009's notification defaults.
+     * table - same reasoning as migration 009's notification defaults,
+     * including the is_default provenance marker and the additive
+     * follow-up migration for pre-existing databases (see that
+     * migration's docblock for the full explanation).
      */
     private function seedDefault( string $table ): void {
         global $wpdb;
@@ -64,15 +69,22 @@ return new class() implements MigrationInterface {
             </html>
             HTML;
 
-        $wpdb->insert(
+        $result = $wpdb->insert(
             $table,
             [
                 'type_key'   => $typeKey,
                 'name'       => 'Membership Certificate',
                 'html_body'  => $html,
+                'is_default' => 1,
                 'updated_at' => current_time( 'mysql' ),
             ],
-            [ '%s', '%s', '%s', '%s' ]
+            [ '%s', '%s', '%s', '%d', '%s' ]
         );
+
+        if ( $result === false ) {
+            throw new DatabaseWriteException(
+                "Failed to seed default certificate template '{$typeKey}': {$wpdb->last_error}"
+            );
+        }
     }
 };

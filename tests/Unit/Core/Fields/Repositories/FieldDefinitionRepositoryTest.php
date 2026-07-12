@@ -6,6 +6,7 @@ namespace AssociationManager\Tests\Unit\Core\Fields\Repositories;
 
 use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Core\Fields\Repositories\FieldDefinitionRepository;
+use AssociationManager\Database\DatabaseWriteException;
 use AssociationManager\Tests\Support\TestCase;
 
 final class FieldDefinitionRepositoryTest extends TestCase
@@ -137,5 +138,25 @@ final class FieldDefinitionRepositoryTest extends TestCase
         $this->assertCount(2, $entityTypes);
         $this->assertContains('member', $entityTypes);
         $this->assertContains('event', $entityTypes);
+    }
+
+    public function testSaveThrowsWhenInsertFails(): void
+    {
+        $this->wpdb->failNextInsert('wp_am_field_definitions');
+
+        $this->expectException(DatabaseWriteException::class);
+
+        $this->repository->save('member', new FieldDefinition(key: 'specialty', label: 'Specialty', type: FieldDefinition::TYPE_TEXT));
+    }
+
+    public function testSaveThrowsWhenUpdateFails(): void
+    {
+        $this->repository->save('member', new FieldDefinition(key: 'specialty', label: 'Specialty', type: FieldDefinition::TYPE_TEXT));
+
+        $this->wpdb->failNextUpdate('wp_am_field_definitions');
+
+        $this->expectException(DatabaseWriteException::class);
+
+        $this->repository->save('member', new FieldDefinition(key: 'specialty', label: 'Ειδικότητα', type: FieldDefinition::TYPE_TEXT));
     }
 }

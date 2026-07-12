@@ -42,6 +42,8 @@ final class MigrationLoaderTest extends TestCase
                 '022_add_pending_value_to_field_values_table',
                 '023_add_requires_approval_to_field_definitions_table',
                 '024_seed_member_field_pending_approval_template',
+                '025_add_is_default_to_notification_templates_table',
+                '026_add_is_default_to_certificate_templates_table',
             ],
             $ids
         );

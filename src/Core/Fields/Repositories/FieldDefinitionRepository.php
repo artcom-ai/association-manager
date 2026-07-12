@@ -6,6 +6,7 @@ namespace AssociationManager\Core\Fields\Repositories;
 
 use AssociationManager\Core\Fields\FieldDefinition;
 use AssociationManager\Database\DatabaseManager;
+use AssociationManager\Database\DatabaseWriteException;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -95,12 +96,18 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
             $data['created_at'] = $now;
             $formats[]          = '%s';
 
-            $wpdb->insert( $table, $data, $formats );
+            $result = $wpdb->insert( $table, $data, $formats );
+
+            if ( $result === false ) {
+                throw new DatabaseWriteException(
+                    "Failed to insert field definition '{$entityType}.{$field->key}': {$wpdb->last_error}"
+                );
+            }
 
             return;
         }
 
-        $wpdb->update(
+        $result = $wpdb->update(
             $table,
             $data,
             [
@@ -110,6 +117,12 @@ final class FieldDefinitionRepository implements FieldDefinitionRepositoryInterf
             $formats,
             [ '%s', '%s' ]
         );
+
+        if ( $result === false ) {
+            throw new DatabaseWriteException(
+                "Failed to update field definition '{$entityType}.{$field->key}': {$wpdb->last_error}"
+            );
+        }
     }
 
     public function delete( string $entityType, string $key ): void {

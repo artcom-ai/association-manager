@@ -11,4 +11,4 @@
 define( 'AM_PLUGIN_FILE', __DIR__ . '/association-manager.php' );
 define( 'AM_PLUGIN_DIR', __DIR__ . '/' );
 define( 'AM_PLUGIN_URL', 'https://example.test/wp-content/plugins/association-manager/' );
-define( 'AM_PLUGIN_VERSION', '0.1.0' );
+define( 'AM_PLUGIN_VERSION', '0.3.0-alpha.1' );
