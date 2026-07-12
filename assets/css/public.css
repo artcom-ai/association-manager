@@ -154,7 +154,9 @@
 
 /* ---------- Buttons ---------- */
 
-.am-button {
+.am-login .am-button,
+.am-register .am-button,
+.am-portal .am-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -172,20 +174,30 @@
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.am-button-primary {
+.am-login .am-button-primary,
+.am-register .am-button-primary,
+.am-portal .am-button-primary {
     background: var(--am-color-primary);
 }
 
-.am-button-primary:hover {
+.am-login .am-button-primary:hover,
+.am-register .am-button-primary:hover,
+.am-portal .am-button-primary:hover {
     background: var(--am-color-primary-hover);
 }
 
-.am-button-primary:active {
+.am-login .am-button-primary:active,
+.am-register .am-button-primary:active,
+.am-portal .am-button-primary:active {
     background: var(--am-color-primary-active);
 }
 
-.am-button:disabled,
-.am-button[aria-disabled="true"] {
+.am-login .am-button:disabled,
+.am-register .am-button:disabled,
+.am-portal .am-button:disabled,
+.am-login .am-button[aria-disabled="true"],
+.am-register .am-button[aria-disabled="true"],
+.am-portal .am-button[aria-disabled="true"] {
     background: var(--am-color-border);
     color: var(--am-color-text-muted);
     cursor: not-allowed;
@@ -193,7 +205,9 @@
 
 /* ---------- Notices / errors / success ---------- */
 
-.am-notice {
+.am-login .am-notice,
+.am-register .am-notice,
+.am-portal .am-notice {
     padding: 0.85rem 1rem;
     border: 1px solid var(--am-color-border);
     border-left-width: 4px;
@@ -201,19 +215,25 @@
     margin-bottom: var(--am-spacing);
 }
 
-.am-notice ul {
+.am-login .am-notice ul,
+.am-register .am-notice ul,
+.am-portal .am-notice ul {
     margin: 0;
     padding-left: 1.1rem;
 }
 
-.am-notice-error {
+.am-login .am-notice-error,
+.am-register .am-notice-error,
+.am-portal .am-notice-error {
     color: var(--am-color-error);
     background: var(--am-color-error-bg);
     border-color: var(--am-color-error-border);
     border-left-color: var(--am-color-error);
 }
 
-.am-notice-success {
+.am-login .am-notice-success,
+.am-register .am-notice-success,
+.am-portal .am-notice-success {
     color: var(--am-color-success);
     background: var(--am-color-success-bg);
     border-color: var(--am-color-success-border);
@@ -222,34 +242,34 @@
 
 /* ---------- Tables (Portal) ---------- */
 
-.am-table-responsive {
+.am-portal .am-table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-bottom: 1rem;
 }
 
-.am-table {
+.am-portal .am-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.am-table th,
-.am-table td {
+.am-portal .am-table th,
+.am-portal .am-table td {
     text-align: left;
     padding: 0.6rem 0.75rem;
     border-bottom: 1px solid var(--am-color-border);
     vertical-align: top;
 }
 
-.am-table th {
+.am-portal .am-table th {
     width: 35%;
     color: var(--am-color-text-muted);
     font-weight: 500;
     white-space: nowrap;
 }
 
-.am-table tr:last-child th,
-.am-table tr:last-child td {
+.am-portal .am-table tr:last-child th,
+.am-portal .am-table tr:last-child td {
     border-bottom: none;
 }
 
@@ -298,11 +318,13 @@
         padding: 1rem;
     }
 
-    .am-button {
+    .am-login .am-button,
+    .am-register .am-button,
+    .am-portal .am-button {
         width: 100%;
     }
 
-    .am-table th {
+    .am-portal .am-table th {
         width: 45%;
     }
 }
