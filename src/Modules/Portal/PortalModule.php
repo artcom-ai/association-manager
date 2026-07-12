@@ -59,6 +59,8 @@ final class PortalModule implements ModuleInterface {
         ( new RegistrationShortcode() )->register();
         ( new LoginShortcode() )->register();
 
+        add_action( 'wp_enqueue_scripts', [ $this, 'maybeEnqueuePublicStyles' ] );
+
         // Registration/login are public, unauthenticated actions - both
         // hooks are required (admin_post_ for a logged-in visitor hitting
         // the form by mistake, admin_post_nopriv_ for the actual anonymous
@@ -109,6 +111,37 @@ final class PortalModule implements ModuleInterface {
             function () use ( $service, $fieldValueRepository, $attachmentStreamer ): void {
                 $this->handleDownloadOwnFieldFile( $service, $fieldValueRepository, $attachmentStreamer );
             }
+        );
+    }
+
+    /**
+     * Conditional on shortcode presence, same pattern as
+     * DirectoryModule::maybeEnqueueMapAssets() - login/register/portal
+     * previously had no front-end stylesheet at all, so their buttons
+     * (.button .button-primary) and tables (.form-table) rendered
+     * unstyled outside wp-admin. This is presentation only - no markup
+     * logic, validation, or workflow behavior changes with it.
+     */
+    public function maybeEnqueuePublicStyles(): void {
+        if ( ! is_singular() ) {
+            return;
+        }
+
+        $content = get_post()->post_content ?? '';
+
+        $hasPortalShortcode = has_shortcode( $content, LoginShortcode::TAG )
+            || has_shortcode( $content, RegistrationShortcode::TAG )
+            || has_shortcode( $content, PortalShortcode::TAG );
+
+        if ( ! $hasPortalShortcode ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'association-manager-public',
+            AM_PLUGIN_URL . 'assets/css/public.css',
+            [],
+            AM_PLUGIN_VERSION
         );
     }
 

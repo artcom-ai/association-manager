@@ -12,7 +12,7 @@ defined('ABSPATH') || exit;
 ?>
 <div class="am-register">
     <?php if (!empty($errors)) : ?>
-        <div class="am-register-errors">
+        <div class="am-register-errors am-notice am-notice-error">
             <ul>
                 <?php foreach ($errors as $fieldErrors) : ?>
                     <?php foreach ($fieldErrors as $message) : ?>
@@ -45,6 +45,6 @@ defined('ABSPATH') || exit;
             <input type="password" id="am-register-password" name="password" required minlength="8" />
         </p>
 
-        <p><button type="submit" class="button button-primary"><?php esc_html_e('Register', 'association-manager'); ?></button></p>
+        <p><button type="submit" class="button button-primary am-button am-button-primary"><?php esc_html_e('Register', 'association-manager'); ?></button></p>
     </form>
 </div>

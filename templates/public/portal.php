@@ -27,7 +27,7 @@ $notificationStatusLabels = [
 
         <?php if ($canEditProfile) : ?>
             <?php if (!empty($profileErrors)) : ?>
-                <div class="am-portal-errors">
+                <div class="am-portal-errors am-notice am-notice-error">
                     <ul>
                         <?php foreach ($profileErrors as $fieldErrors) : ?>
                             <?php foreach ($fieldErrors as $message) : ?>
@@ -41,7 +41,8 @@ $notificationStatusLabels = [
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
                 <?php wp_nonce_field('association_manager_submit_profile'); ?>
                 <input type="hidden" name="action" value="association_manager_submit_profile" />
-                <table class="form-table">
+                <div class="am-table-responsive">
+                <table class="form-table am-table">
                     <tbody>
                     <tr>
                         <th><?php esc_html_e('Member #', 'association-manager'); ?></th>
@@ -56,11 +57,13 @@ $notificationStatusLabels = [
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <p class="description"><?php esc_html_e('Fill in your details, then submit for review. An administrator will approve your membership.', 'association-manager'); ?></p>
-                <p><button type="submit" class="button button-primary"><?php esc_html_e('Submit for approval', 'association-manager'); ?></button></p>
+                <p><button type="submit" class="button button-primary am-button am-button-primary"><?php esc_html_e('Submit for approval', 'association-manager'); ?></button></p>
             </form>
         <?php else : ?>
-            <table>
+            <div class="am-table-responsive">
+            <table class="am-table">
                 <tbody>
                 <tr>
                     <th><?php esc_html_e('Member #', 'association-manager'); ?></th>
@@ -78,6 +81,7 @@ $notificationStatusLabels = [
                 <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
             <p class="description"><?php esc_html_e('To update your profile, please contact the association.', 'association-manager'); ?></p>
         <?php endif; ?>
     </section>
@@ -92,7 +96,8 @@ $notificationStatusLabels = [
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data">
                 <?php wp_nonce_field('association_manager_update_field_file'); ?>
                 <input type="hidden" name="action" value="association_manager_update_field_file" />
-                <table class="form-table">
+                <div class="am-table-responsive">
+                <table class="form-table am-table">
                     <tbody>
                     <?php foreach ($editableFileFields as $row) : ?>
                         <tr>
@@ -121,7 +126,8 @@ $notificationStatusLabels = [
                     <?php endforeach; ?>
                     </tbody>
                 </table>
-                <p><button type="submit" class="button button-primary"><?php esc_html_e('Upload', 'association-manager'); ?></button></p>
+                </div>
+                <p><button type="submit" class="button button-primary am-button am-button-primary"><?php esc_html_e('Upload', 'association-manager'); ?></button></p>
             </form>
         <?php endif; ?>
     </section>
@@ -129,7 +135,8 @@ $notificationStatusLabels = [
 
     <section class="am-portal-status">
         <h2><?php esc_html_e('Membership status', 'association-manager'); ?></h2>
-        <table>
+        <div class="am-table-responsive">
+        <table class="am-table">
             <tbody>
             <tr>
                 <th><?php esc_html_e('Status', 'association-manager'); ?></th>
@@ -141,11 +148,13 @@ $notificationStatusLabels = [
             </tr>
             </tbody>
         </table>
+        </div>
     </section>
 
     <section class="am-portal-summary">
         <h2><?php esc_html_e('Membership summary', 'association-manager'); ?></h2>
-        <table>
+        <div class="am-table-responsive">
+        <table class="am-table">
             <tbody>
             <tr>
                 <th><?php esc_html_e('Joined', 'association-manager'); ?></th>
@@ -161,6 +170,7 @@ $notificationStatusLabels = [
             </tr>
             </tbody>
         </table>
+        </div>
     </section>
 
     <section class="am-portal-documents">

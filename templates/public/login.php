@@ -10,7 +10,7 @@ defined('ABSPATH') || exit;
 ?>
 <div class="am-login">
     <?php if (!empty($errors)) : ?>
-        <div class="am-login-errors">
+        <div class="am-login-errors am-notice am-notice-error">
             <ul>
                 <?php foreach ($errors as $fieldErrors) : ?>
                     <?php foreach ($fieldErrors as $message) : ?>
@@ -41,7 +41,7 @@ defined('ABSPATH') || exit;
             </label>
         </p>
 
-        <p><button type="submit" class="button button-primary"><?php esc_html_e('Log In', 'association-manager'); ?></button></p>
+        <p><button type="submit" class="button button-primary am-button am-button-primary"><?php esc_html_e('Log In', 'association-manager'); ?></button></p>
     </form>
 
     <p><a href="<?php echo esc_url(wp_lostpassword_url()); ?>"><?php esc_html_e('Forgot your password?', 'association-manager'); ?></a></p>

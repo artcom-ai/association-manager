@@ -1,0 +1,308 @@
+/**
+ * Association Manager - public front-end styles.
+ *
+ * Scoped entirely under .am-login / .am-register / .am-portal so nothing
+ * here ever affects the active theme's own markup. Custom properties are
+ * declared on those same root selectors (not :root) for the same reason -
+ * a theme that also happens to define --am-* variables globally can never
+ * collide with this stylesheet.
+ *
+ * Buttons/tables in these templates previously relied on wp-admin-only
+ * classes (.button, .button-primary, .form-table), which carry no
+ * front-end styling at all outside wp-admin. This file styles the
+ * .am-button*/.am-table* classes added alongside them.
+ */
+
+.am-login,
+.am-register,
+.am-portal {
+    --am-color-primary: #2563eb;
+    --am-color-primary-hover: #1d4ed8;
+    --am-color-primary-active: #1e40af;
+    --am-color-text: #1f2937;
+    --am-color-text-muted: #6b7280;
+    --am-color-border: #d1d5db;
+    --am-color-surface: #ffffff;
+    --am-color-surface-muted: #f9fafb;
+    --am-color-error: #b91c1c;
+    --am-color-error-bg: #fef2f2;
+    --am-color-error-border: #fecaca;
+    --am-color-success: #15803d;
+    --am-color-success-bg: #f0fdf4;
+    --am-color-success-border: #bbf7d0;
+    --am-radius: 8px;
+    --am-spacing: 1rem;
+
+    color: var(--am-color-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.am-login *,
+.am-register *,
+.am-portal * {
+    box-sizing: border-box;
+}
+
+/* ---------- Layout ---------- */
+
+.am-login,
+.am-register {
+    max-width: 420px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: var(--am-color-surface);
+    border: 1px solid var(--am-color-border);
+    border-radius: var(--am-radius);
+}
+
+.am-portal {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+/* ---------- Headings ---------- */
+
+.am-login h1,
+.am-register h1,
+.am-portal h1,
+.am-portal h2 {
+    color: var(--am-color-text);
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0 0 1rem;
+}
+
+.am-portal h2 {
+    font-size: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--am-color-border);
+}
+
+/* ---------- Sections (Portal) ---------- */
+
+.am-portal > section {
+    background: var(--am-color-surface);
+    border: 1px solid var(--am-color-border);
+    border-radius: var(--am-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ---------- Forms ---------- */
+
+.am-login form p,
+.am-register form p,
+.am-portal form p {
+    margin: 0 0 var(--am-spacing);
+}
+
+.am-login label,
+.am-register label,
+.am-portal label {
+    display: inline-block;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--am-color-text);
+    margin-bottom: 0.35rem;
+}
+
+.am-login input[type="text"],
+.am-login input[type="password"],
+.am-register input[type="text"],
+.am-register input[type="email"],
+.am-register input[type="password"],
+.am-portal input[type="text"],
+.am-portal input[type="email"],
+.am-portal input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+    color: var(--am-color-text);
+    background: var(--am-color-surface);
+    border: 1px solid var(--am-color-border);
+    border-radius: var(--am-radius);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.am-login input[type="checkbox"] {
+    margin-right: 0.4rem;
+}
+
+.am-login input:focus-visible,
+.am-register input:focus-visible,
+.am-portal input:focus-visible,
+.am-login a:focus-visible,
+.am-register a:focus-visible,
+.am-portal a:focus-visible,
+.am-button:focus-visible {
+    outline: none;
+    border-color: var(--am-color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.am-login .description,
+.am-register .description,
+.am-portal .description {
+    color: var(--am-color-text-muted);
+    font-size: 0.875rem;
+    margin: 0.5rem 0 1rem;
+}
+
+/* ---------- Buttons ---------- */
+
+.am-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.6rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #ffffff;
+    background: var(--am-color-text-muted);
+    border: 1px solid transparent;
+    border-radius: var(--am-radius);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.am-button-primary {
+    background: var(--am-color-primary);
+}
+
+.am-button-primary:hover {
+    background: var(--am-color-primary-hover);
+}
+
+.am-button-primary:active {
+    background: var(--am-color-primary-active);
+}
+
+.am-button:disabled,
+.am-button[aria-disabled="true"] {
+    background: var(--am-color-border);
+    color: var(--am-color-text-muted);
+    cursor: not-allowed;
+}
+
+/* ---------- Notices / errors / success ---------- */
+
+.am-notice {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--am-color-border);
+    border-left-width: 4px;
+    border-radius: var(--am-radius);
+    margin-bottom: var(--am-spacing);
+}
+
+.am-notice ul {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+.am-notice-error {
+    color: var(--am-color-error);
+    background: var(--am-color-error-bg);
+    border-color: var(--am-color-error-border);
+    border-left-color: var(--am-color-error);
+}
+
+.am-notice-success {
+    color: var(--am-color-success);
+    background: var(--am-color-success-bg);
+    border-color: var(--am-color-success-border);
+    border-left-color: var(--am-color-success);
+}
+
+/* ---------- Tables (Portal) ---------- */
+
+.am-table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+}
+
+.am-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.am-table th,
+.am-table td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--am-color-border);
+    vertical-align: top;
+}
+
+.am-table th {
+    width: 35%;
+    color: var(--am-color-text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.am-table tr:last-child th,
+.am-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ---------- Lists (documents/certificates/notifications) ---------- */
+
+.am-portal ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.am-portal li {
+    margin-bottom: 0.5rem;
+}
+
+/* ---------- Links ---------- */
+
+.am-login a,
+.am-register a,
+.am-portal a {
+    color: var(--am-color-primary);
+}
+
+.am-login a:hover,
+.am-register a:hover,
+.am-portal a:hover {
+    color: var(--am-color-primary-hover);
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 600px) {
+    .am-login,
+    .am-register {
+        margin: 0;
+        padding: 1.5rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .am-portal {
+        padding: 0 0.75rem;
+    }
+
+    .am-portal > section {
+        padding: 1rem;
+    }
+
+    .am-button {
+        width: 100%;
+    }
+
+    .am-table th {
+        width: 45%;
+    }
+}
